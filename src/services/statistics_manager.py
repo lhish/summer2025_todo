@@ -1,4 +1,4 @@
-from database import DatabaseManager
+from src.database.database import DatabaseManager
 from datetime import datetime, timedelta
 from typing import Optional, List, Dict, Any
 import logging

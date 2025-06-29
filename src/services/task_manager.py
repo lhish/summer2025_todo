@@ -8,7 +8,7 @@ from typing import List, Dict, Optional, Any
 from datetime import datetime, date, timedelta
 import logging
 
-from database import DatabaseManager, TagManager
+from src.database.database import DatabaseManager, TagManager
 
 logger = logging.getLogger(__name__)
 
