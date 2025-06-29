@@ -63,15 +63,17 @@ def show_next_steps():
     print("\n接下来的步骤:")
     print("1. 配置MySQL数据库:")
     print("   - 创建数据库: CREATE DATABASE pomodoro_task_manager;")
-    print("   - 执行: mysql -u root -p pomodoro_task_manager < database_setup.sql")
+    print("   - 执行: mysql -u root -p pomodoro_task_manager < src/database/migrations/database_setup.sql")
     print("\n2. 修改 .env 文件中的配置:")
     print("   - 数据库连接信息")
     print("   - AI API密钥和端点")
     print("\n3. 运行应用:")
-    print("   python run_app.py")
+    print("   python app.py")
     print("\n4. 访问应用:")
     print("   http://localhost:8080")
-    print("\n注意: AI功能需要有效的Gemini API密钥才能正常工作")
+    print("\n5. 运行测试:")
+    print("   python -m pytest tests/")
+    print("\n注意: AI功能需要有效的API密钥才能正常工作")
 
 def main():
     """主函数"""
