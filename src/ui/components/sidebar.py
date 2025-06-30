@@ -14,7 +14,7 @@ class SidebarComponent:
         self.on_logout = on_logout
         self.on_settings = on_settings
         self.on_statistics = on_statistics
-        self.sidebar_collapsed = False
+        self.sidebar_collapsed = True
         self.current_view = 'my_day'
         self.user_lists: List[Dict] = []
         self.sidebar_container = None
@@ -26,6 +26,10 @@ class SidebarComponent:
     def create_sidebar(self, container):
         """创建左侧边栏"""
         self.sidebar_container = container
+        
+        # 根据初始状态应用CSS类
+        if self.sidebar_collapsed:
+            container.classes(add='sidebar-collapsed')
         
         with container:
             # 顶部：折叠/展开按钮
@@ -62,16 +66,16 @@ class SidebarComponent:
                             ui.label('已登录').classes('text-xs text-grey-6')
                 
                 # 操作按钮 - 始终显示，根据展开/收起状态调整布局
-                with ui.column().classes('w-full p-4'):
+                with ui.column().classes('w-full p-4 pb-6'):
                     if self.sidebar_collapsed:
                         # 收起时：竖直排列居中
-                        with ui.column().classes('w-full items-center gap-2'):
+                        with ui.column().classes('w-full items-center gap-3'):
                             ui.button(icon='analytics', on_click=self.on_statistics).props('flat round size=sm')
                             ui.button(icon='settings', on_click=self.on_settings).props('flat round size=sm')
                             ui.button(icon='logout', on_click=self.on_logout).props('flat round size=sm')
                     else:
                         # 展开时：水平排列靠右
-                        with ui.row().classes('w-full justify-end gap-1'):
+                        with ui.row().classes('w-full justify-end gap-2'):
                             ui.button(icon='analytics', on_click=self.on_statistics).props('flat round size=sm')
                             ui.button(icon='settings', on_click=self.on_settings).props('flat round size=sm')
                             ui.button(icon='logout', on_click=self.on_logout).props('flat round size=sm')
@@ -84,9 +88,14 @@ class SidebarComponent:
             # 更新active状态
             self.update_sidebar_active_state()
         
-        classes = 'sidebar-item w-full p-3 rounded cursor-pointer flex items-center gap-3'
+        classes = 'sidebar-item w-full p-3 rounded cursor-pointer flex items-center'
         if self.current_view == view_type:
             classes += ' active'
+        if self.sidebar_collapsed:
+            classes += ' justify-center'
+        else:
+            classes += ' gap-3'
+
         
         with ui.row().classes(classes).on('click', select_view):
             ui.icon(icon).classes('text-xl text-grey-7')
@@ -113,9 +122,13 @@ class SidebarComponent:
                         self.update_sidebar_active_state()
                     return inner_select
                 
-                classes = 'sidebar-item w-full p-3 rounded cursor-pointer flex items-center gap-3'
+                classes = 'sidebar-item w-full p-3 rounded cursor-pointer flex items-center'
                 if self.current_view == f'list_{user_list["list_id"]}':
                     classes += ' active'
+                if self.sidebar_collapsed:
+                    classes += ' justify-center'
+                else:
+                    classes += ' gap-3'
                 
                 with ui.row().classes(classes).on('click', select_list(user_list)):
                     ui.icon('folder', color=user_list.get('color', '#2196F3')).classes('text-xl text-grey-7')
