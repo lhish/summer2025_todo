@@ -120,11 +120,13 @@ class MainPage:
         # 侧边栏组件
         self.sidebar_component = SidebarComponent(
             self.list_manager, 
+            self.task_manager,
             self.current_user, 
             self.on_view_change,
             self.handle_logout,
             self.show_settings,
-            self.show_statistics
+            self.show_statistics,
+            self.refresh_and_update_ui
         )
         
         # 任务列表组件
@@ -340,6 +342,27 @@ class MainPage:
             .sidebar-item.active {
                 background: #e3f2fd;
                 border-right: 3px solid #2196f3;
+            }
+            
+            /* 清单项样式 */
+            .list-item-container {
+                transition: all 0.2s ease;
+            }
+            .list-item-container:hover {
+                background: #f0f8ff;
+            }
+            .list-item-container.active {
+                background: #e3f2fd;
+                border-right: 3px solid #2196f3;
+            }
+            
+            /* 菜单按钮样式 */
+            .list-menu-button {
+                opacity: 0;
+                transition: opacity 0.2s ease;
+            }
+            .list-item-container:hover .list-menu-button {
+                opacity: 1;
             }
         </style>
         """)
