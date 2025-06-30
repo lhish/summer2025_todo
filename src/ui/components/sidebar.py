@@ -7,12 +7,13 @@ from typing import Dict, List, Callable, Optional
 
 
 class SidebarComponent:
-    def __init__(self, list_manager, current_user: Dict, on_view_change: Callable, on_logout: Callable, on_settings: Callable):
+    def __init__(self, list_manager, current_user: Dict, on_view_change: Callable, on_logout: Callable, on_settings: Callable, on_statistics: Callable = None):
         self.list_manager = list_manager
         self.current_user = current_user
         self.on_view_change = on_view_change
         self.on_logout = on_logout
         self.on_settings = on_settings
+        self.on_statistics = on_statistics
         self.sidebar_collapsed = False
         self.current_view = 'my_day'
         self.user_lists: List[Dict] = []
@@ -35,7 +36,7 @@ class SidebarComponent:
             
             # 第一部分：默认视图
             with ui.column().classes('w-full p-2'):
-                self.create_sidebar_item('我的一天', 'today', 'my_day')
+                self.create_sidebar_item('我的一天', 'sunny', 'my_day')
                 self.create_sidebar_item('计划内', 'event', 'planned')
                 self.create_sidebar_item('重要', 'star', 'important')
                 self.create_sidebar_item('任务', 'list', 'all')
@@ -47,16 +48,33 @@ class SidebarComponent:
             self.refresh_sidebar_lists()
             
             ui.separator()
+
+            # 占据剩余空间
+            ui.element('div').style('margin-top: auto')
             
-            # 底部：用户信息
-            with ui.column().classes('mt-auto p-4 bg-grey-1'):
+            # 底部区域
+            with ui.column().classes('w-full'):
+                # 已登录状态 - 只在展开时显示
                 if not self.sidebar_collapsed:
-                    ui.label(self.current_user['email']).classes('text-sm font-medium')
-                    ui.label('已登录').classes('text-xs text-grey-6')
+                    with ui.column().classes('w-full p-4'):
+                        with ui.column().classes('gap-1'):
+                            ui.label(self.current_user['email']).classes('text-sm font-medium')
+                            ui.label('已登录').classes('text-xs text-grey-6')
                 
-                with ui.row().classes('w-full justify-end'):
-                    ui.button(icon='settings', on_click=self.on_settings).props('flat round size=sm')
-                    ui.button(icon='logout', on_click=self.on_logout).props('flat round size=sm')
+                # 操作按钮 - 始终显示，根据展开/收起状态调整布局
+                with ui.column().classes('w-full p-4'):
+                    if self.sidebar_collapsed:
+                        # 收起时：竖直排列居中
+                        with ui.column().classes('w-full items-center gap-2'):
+                            ui.button(icon='analytics', on_click=self.on_statistics).props('flat round size=sm')
+                            ui.button(icon='settings', on_click=self.on_settings).props('flat round size=sm')
+                            ui.button(icon='logout', on_click=self.on_logout).props('flat round size=sm')
+                    else:
+                        # 展开时：水平排列靠右
+                        with ui.row().classes('w-full justify-end gap-1'):
+                            ui.button(icon='analytics', on_click=self.on_statistics).props('flat round size=sm')
+                            ui.button(icon='settings', on_click=self.on_settings).props('flat round size=sm')
+                            ui.button(icon='logout', on_click=self.on_logout).props('flat round size=sm')
 
     def create_sidebar_item(self, label: str, icon: str, view_type: str):
         """创建侧边栏项目"""
@@ -71,7 +89,7 @@ class SidebarComponent:
             classes += ' active'
         
         with ui.row().classes(classes).on('click', select_view):
-            ui.icon(icon).classes('text-grey-7')
+            ui.icon(icon).classes('text-xl text-grey-7')
             if not self.sidebar_collapsed:
                 ui.label(label).classes('text-sm')
 
@@ -100,7 +118,7 @@ class SidebarComponent:
                     classes += ' active'
                 
                 with ui.row().classes(classes).on('click', select_list(user_list)):
-                    ui.icon('folder', color=user_list.get('color', '#2196F3')).classes('text-grey-7')
+                    ui.icon('folder', color=user_list.get('color', '#2196F3')).classes('text-xl text-grey-7')
                     if not self.sidebar_collapsed:
                         ui.label(user_list['name']).classes('text-sm')
                         if user_list.get('task_count', 0) > 0:
@@ -114,6 +132,9 @@ class SidebarComponent:
             self.sidebar_container.classes(add='sidebar-collapsed')
         else:
             self.sidebar_container.classes(remove='sidebar-collapsed')
+        
+        # 重新创建侧边栏以更新显示状态
+        self.update_sidebar_active_state()
 
     def update_sidebar_active_state(self):
         """更新侧边栏激活状态"""
