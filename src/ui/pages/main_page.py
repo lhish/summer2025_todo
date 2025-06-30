@@ -86,7 +86,7 @@ class MainPage:
             self.main_row = main_row
             
             # 左侧边栏
-            self.sidebar_container = ui.column().classes('sidebar-container')
+            self.sidebar_container = ui.column().classes('sidebar-container h-full')
             self.sidebar_component.create_sidebar(self.sidebar_container)
             
             # 中间主内容区域
@@ -121,7 +121,8 @@ class MainPage:
             self.current_user, 
             self.on_view_change,
             self.handle_logout,
-            self.show_settings
+            self.show_settings,
+            self.show_statistics
         )
         
         # 任务列表组件
@@ -228,6 +229,17 @@ class MainPage:
         """显示设置对话框"""
         self.settings_component.show_settings_dialog()
 
+    def show_statistics(self):
+        """显示统计窗口"""
+        with ui.dialog() as dialog:
+            with ui.card().classes('w-96 max-w-full'):
+                ui.label('统计分析').classes('text-h6 mb-4')
+                if self.current_user:
+                    self.stats_component.create_stats_overview(self.current_user['user_id'])
+                else:
+                    ui.label('未登录用户')
+        dialog.open()
+
     def handle_logout(self):
         """处理用户退出"""
         # 清除登录状态
@@ -268,10 +280,11 @@ class MainPage:
                 background: white;
                 border-right: 1px solid #e0e0e0;
                 transition: all 0.3s ease;
+                overflow: hidden;
             }
             .sidebar-collapsed {
-                width: 60px !important;
-                min-width: 60px !important;
+                width: 70px !important;
+                min-width: 70px !important;
             }
             .task-detail-container {
                 width: 360px;
