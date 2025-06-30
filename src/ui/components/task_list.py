@@ -18,24 +18,71 @@ class TaskListComponent:
         self.current_tasks: List[Dict] = []
         self.current_view = 'my_day'
 
+    def show_create_task_dialog(self):
+        """弹窗新建任务（增加描述、截止日期、优先级、小番茄数）"""
+        dialog = None
+
+        def handle_create():
+            title = title_input.value.strip()
+            description = desc_input.value.strip()
+            due = due_input.value
+            priority = priority_input.value
+            estimated_pomodoros = pomo_input.value
+
+            if not title:
+                ui.notify('请输入任务标题', type='warning')
+                return
+
+            due_date = None
+            if due:
+                try:
+                    due_date = date.fromisoformat(due)
+                except Exception:
+                    ui.notify('截止日期格式错误', type='warning')
+                    return
+
+            try:
+                estimated_pomodoros = int(estimated_pomodoros)
+                if estimated_pomodoros < 1:
+                    raise ValueError
+            except Exception:
+                estimated_pomodoros = 1
+
+            task_id = self.task_manager.create_task(
+                user_id=self.current_user['user_id'],
+                title=title,
+                description=description if description else None,
+                due_date=due_date,
+                priority=priority if priority else 'medium',
+                estimated_pomodoros=estimated_pomodoros
+            )
+            if task_id:
+                ui.notify('任务创建成功', type='positive')
+                dialog.close()
+                self.on_refresh()
+            else:
+                ui.notify('任务创建失败', type='negative')
+
+        with ui.dialog() as dialog:
+            with ui.card().classes('w-96 max-w-full p-6'):  # 设置弹窗宽度和内边距
+                ui.label('新建任务').classes('text-h6 mb-4')
+                title_input = ui.input('任务标题*').props('clearable').classes('w-full mb-4')
+                desc_input = ui.textarea('任务描述').props('clearable').classes('w-full mb-4')
+                with ui.row().classes('w-full mb-4'):
+                    due_input = ui.input('截止日期').props('type=date').classes('flex-1 mr-2')
+                    priority_input = ui.select(['high', 'medium', 'low'], value='medium', label='优先级').classes('flex-1 ml-2')
+                pomo_input = ui.input('预估小番茄数').props('type=number min=1').classes('w-full mb-4')
+                pomo_input.value = 1
+                with ui.row().classes('justify-end'):
+                    ui.button('取消', on_click=dialog.close).props('flat')
+                    ui.button('创建', on_click=handle_create).props('color=primary')
+        dialog.open()
+
     def create_add_task_input(self, container):
-        """创建添加任务输入框"""
-        def handle_button_add():
-            if task_input.value.strip():
-                self.create_quick_task(task_input.value.strip())
-                task_input.value = ''
-        
-        def handle_enter_key():
-            if task_input.value.strip():
-                self.create_quick_task(task_input.value.strip())
-                task_input.value = ''
-        
+        """创建添加任务输入框（按钮弹窗）"""
         with container:
             with ui.row().classes('w-full mb-6'):
-                task_input = ui.input(placeholder='添加任务...').classes('flex-1')
-                # 使用action方法处理回车键
-                task_input.action = handle_enter_key
-                ui.button(icon='add', on_click=handle_button_add).props('flat round color=primary')
+                ui.button(icon='add', on_click=self.show_create_task_dialog).props('flat round color=primary')
 
     def create_quick_task(self, title: str):
         """快速创建任务"""
@@ -188,4 +235,4 @@ class TaskListComponent:
             'pending_tasks': len(pending_tasks),
             'focus_time': focus_time,
             'completed_tasks': len(completed_tasks)
-        } 
+        }
