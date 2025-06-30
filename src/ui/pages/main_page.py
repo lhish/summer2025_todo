@@ -195,10 +195,17 @@ class MainPage:
     def on_view_change(self, view_type: str):
         """视图切换回调"""
         self.current_view = view_type
+        
+        # 先更新用户数据（包括清单信息）
+        self.load_user_data()
+        
+        # 刷新任务数据
         self.refresh_current_tasks()
         
         # 更新主内容区域
         if self.main_content_component and self.main_content_container:
+            # 确保主内容组件有最新的清单数据
+            self.main_content_component.update_user_lists(self.user_lists)
             self.main_content_component.create_main_content(
                 self.main_content_container,
                 self.current_view,

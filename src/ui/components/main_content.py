@@ -21,22 +21,24 @@ class MainContentComponent:
         with container:
             with ui.column().classes('w-full p-6'):
                 # 页面标题
-                view_titles = {
-                    'my_day': '我的一天',
-                    'planned': '计划内',
-                    'important': '重要',
-                    'all': '任务'
-                }
+                title = '任务'  # 默认标题
                 
-                title = view_titles.get(current_view, '任务')
-                
-                # 如果是清单视图，显示清单名称
                 if current_view.startswith('list_'):
+                    # 清单视图：显示清单名称
                     list_id = int(current_view.split('_')[1])
                     for user_list in self.user_lists:
                         if user_list['list_id'] == list_id:
                             title = user_list['name']
                             break
+                else:
+                    # 默认视图
+                    view_titles = {
+                        'my_day': '我的一天',
+                        'planned': '计划内',
+                        'important': '重要',
+                        'all': '任务'
+                    }
+                    title = view_titles.get(current_view, '任务')
                 
                 ui.label(title).classes('text-h4 font-bold mb-4')
                 

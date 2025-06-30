@@ -60,10 +60,12 @@ class SidebarComponent:
             with ui.column().classes('w-full'):
                 # 已登录状态 - 只在展开时显示
                 if not self.sidebar_collapsed:
-                    with ui.column().classes('w-full p-4'):
+                    ui.separator()
+                    with ui.column().classes('w-full p-1'):
                         with ui.column().classes('gap-1'):
                             ui.label(self.current_user['email']).classes('text-sm font-medium')
                             ui.label('已登录').classes('text-xs text-grey-6')
+                    ui.separator()
                 
                 # 操作按钮 - 始终显示，根据展开/收起状态调整布局
                 with ui.column().classes('w-full p-4 pb-6'):
@@ -74,11 +76,14 @@ class SidebarComponent:
                             ui.button(icon='settings', on_click=self.on_settings).props('flat round size=sm')
                             ui.button(icon='logout', on_click=self.on_logout).props('flat round size=sm')
                     else:
-                        # 展开时：水平排列靠右
-                        with ui.row().classes('w-full justify-end gap-2'):
-                            ui.button(icon='analytics', on_click=self.on_statistics).props('flat round size=sm')
-                            ui.button(icon='settings', on_click=self.on_settings).props('flat round size=sm')
-                            ui.button(icon='logout', on_click=self.on_logout).props('flat round size=sm')
+                        # 展开时：新建清单按钮靠左，其他按钮靠右
+                        with ui.row().classes('w-full justify-between gap-2'):
+                            ui.button(icon='add', on_click=self.show_create_list_dialog).props('flat round size=sm')
+                            
+                            with ui.row().classes('gap-2'):
+                                ui.button(icon='analytics', on_click=self.on_statistics).props('flat round size=sm')
+                                ui.button(icon='settings', on_click=self.on_settings).props('flat round size=sm')
+                                ui.button(icon='logout', on_click=self.on_logout).props('flat round size=sm')
 
     def create_sidebar_item(self, label: str, icon: str, view_type: str):
         """创建侧边栏项目"""
@@ -131,7 +136,8 @@ class SidebarComponent:
                     classes += ' gap-3'
                 
                 with ui.row().classes(classes).on('click', select_list(user_list)):
-                    ui.icon('folder', color=user_list.get('color', '#2196F3')).classes('text-xl text-grey-7')
+                    # 使用对应颜色的圆圈图标
+                    ui.element('div').classes('w-5 h-5 rounded-full').style(f'background-color: {user_list.get("color", "#2196F3")}; min-width: 20px; min-height: 20px;')
                     if not self.sidebar_collapsed:
                         ui.label(user_list['name']).classes('text-sm')
                         if user_list.get('task_count', 0) > 0:
@@ -169,3 +175,77 @@ class SidebarComponent:
     def get_user_lists(self) -> List[Dict]:
         """获取用户清单列表"""
         return self.user_lists 
+    
+    def show_create_list_dialog(self):
+        """显示创建清单对话框"""
+        dialog_result = {'list_name': '', 'list_color': '#2196F3'}
+        
+        def create_list():
+            """创建新清单"""
+            if not dialog_result['list_name'].strip():
+                ui.notify('清单名称不能为空', type='warning')
+                return
+            
+            try:
+                # 创建新清单
+                new_list = self.list_manager.create_list(
+                    user_id=self.current_user['user_id'],
+                    name=dialog_result['list_name'].strip(),
+                    color=dialog_result['list_color']
+                )
+                
+                if new_list:
+                    # 刷新侧边栏清单显示
+                    self.refresh_sidebar_lists()
+                    ui.notify(f'清单 "{dialog_result["list_name"]}" 创建成功！', type='positive')
+                    dialog.close()
+                else:
+                    ui.notify('创建清单失败，请重试', type='negative')
+            except Exception as e:
+                ui.notify(f'创建清单时出错：{str(e)}', type='negative')
+        
+        def on_name_change(e):
+            """处理清单名称变化"""
+            dialog_result['list_name'] = e.value
+        
+        def on_color_change(color):
+            """处理颜色变化"""
+            dialog_result['list_color'] = color
+        
+        # 创建对话框
+        with ui.dialog(value=True) as dialog, ui.card().classes('w-80 p-6'):
+            ui.label('新建清单').classes('text-lg font-medium mb-4')
+            
+            # 清单名称输入
+            with ui.column().classes('w-full gap-4'):
+                ui.input(
+                    label='清单名称', 
+                    placeholder='请输入清单名称',
+                    on_change=on_name_change
+                ).classes('w-full').props('outlined')
+                
+                # 颜色选择
+                with ui.row().classes('w-full items-center gap-3'):
+                    ui.label('颜色:').classes('text-sm')
+                    
+                    # 预设颜色选项
+                    colors = [
+                        '#2196F3',  # 蓝色
+                        '#4CAF50',  # 绿色  
+                        '#FF9800',  # 橙色
+                        '#9C27B0',  # 紫色
+                        '#F44336',  # 红色
+                        '#607D8B',  # 蓝灰色
+                        '#795548',  # 棕色
+                        '#E91E63'   # 粉色
+                    ]
+                    
+                    with ui.row().classes('gap-2'):
+                        for color in colors:
+                            color_button = ui.button().props(f'flat round size=sm').style(f'background-color: {color}; min-width: 28px; height: 28px;')
+                            color_button.on('click', lambda c=color: on_color_change(c))
+                
+                # 操作按钮
+                with ui.row().classes('w-full justify-end gap-2 mt-4'):
+                    ui.button('取消', on_click=dialog.close).props('flat')
+                    ui.button('创建', on_click=create_list).props('color=primary')
