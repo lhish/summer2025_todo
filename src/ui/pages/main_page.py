@@ -75,11 +75,14 @@ class MainPage:
         """显示主应用界面"""
         ui.page_title('个人任务与效能管理平台')
         
+        # 初始化组件
+        self.init_components()
+        
         # 加载用户数据
         self.load_user_data()
         
-        # 初始化组件
-        self.init_components()
+        # 加载任务数据
+        self.refresh_current_tasks()
         
         # 主体布局
         with ui.row().classes('w-full h-screen no-wrap') as main_row:
@@ -111,7 +114,6 @@ class MainPage:
         """加载用户数据"""
         if self.current_user:
             self.user_lists = self.list_manager.get_user_lists(self.current_user['user_id'])
-            self.refresh_current_tasks()
 
     def init_components(self):
         """初始化组件"""
