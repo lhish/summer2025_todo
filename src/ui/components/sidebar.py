@@ -36,7 +36,7 @@ class SidebarComponent:
             
             # 第一部分：默认视图
             with ui.column().classes('w-full p-2'):
-                self.create_sidebar_item('我的一天', 'today', 'my_day')
+                self.create_sidebar_item('我的一天', 'sunny', 'my_day')
                 self.create_sidebar_item('计划内', 'event', 'planned')
                 self.create_sidebar_item('重要', 'star', 'important')
                 self.create_sidebar_item('任务', 'list', 'all')

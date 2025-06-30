@@ -274,6 +274,13 @@ class MainPage:
         """添加CSS样式"""
         ui.add_head_html("""
         <style>
+            body {
+                margin: 0;
+                padding: 0;
+                overflow: hidden;
+                height: 100vh;
+            }
+            
             .sidebar-container {
                 width: 280px;
                 min-width: 280px;
