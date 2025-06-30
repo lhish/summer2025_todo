@@ -85,21 +85,13 @@ class StatisticsDashboardComponent:
         if not self.statistics_manager:
             return {}
         
-        today = date.today()
-        
-        # 获取今日完成的任务数
-        completed_tasks = self.statistics_manager.get_completed_tasks_count(user_id, today)
-        
-        # 获取今日番茄钟会话数
-        pomodoro_sessions = self.statistics_manager.get_pomodoro_sessions_count(user_id, today)
-        
-        # 获取今日专注时间
-        focus_hours = self.statistics_manager.get_focus_time_hours(user_id, today)
+        # 使用现有的 get_productivity_overview 方法获取今日数据
+        overview = self.statistics_manager.get_productivity_overview(user_id, days=1)
         
         return {
-            'completed_tasks': completed_tasks,
-            'pomodoro_sessions': pomodoro_sessions,
-            'focus_hours': focus_hours
+            'completed_tasks': overview.get('today_completed_tasks', 0),
+            'pomodoro_sessions': overview.get('today_focus_sessions', 0),
+            'focus_hours': round(overview.get('today_focus_minutes', 0) / 60, 1)
         }
     
     def get_weekly_data(self, user_id: int) -> List[Dict]:
@@ -112,16 +104,32 @@ class StatisticsDashboardComponent:
             day_name = day.strftime('%m/%d')
             
             if self.statistics_manager:
-                completed = self.statistics_manager.get_completed_tasks_count(user_id, day)
-                total = self.statistics_manager.get_total_tasks_count(user_id, day)
+                # 使用 get_tasks_completed_by_period 方法获取每日数据
+                start_date = datetime.combine(day, datetime.min.time())
+                end_date = datetime.combine(day, datetime.max.time())
+                
+                completed_data = self.statistics_manager.get_tasks_completed_by_period(
+                    user_id, 'daily', start_date, end_date
+                )
+                
+                # 获取总任务数（需要单独查询）
+                total_query = """
+                SELECT COUNT(*) as total_count
+                FROM tasks 
+                WHERE user_id = %s AND DATE(created_at) = %s
+                """
+                total_result = self.statistics_manager.db.execute_query(total_query, (user_id, day))
+                total_tasks = total_result[0]['total_count'] if total_result else 0
+                
+                completed_tasks = completed_data[0]['completed_count'] if completed_data else 0
             else:
-                completed = 0
-                total = 0
+                completed_tasks = 0
+                total_tasks = 0
             
             weekly_data.append({
                 'day': day_name,
-                'completed_tasks': completed,
-                'total_tasks': total
+                'completed_tasks': completed_tasks,
+                'total_tasks': total_tasks
             })
         
         return weekly_data
@@ -131,7 +139,20 @@ class StatisticsDashboardComponent:
         if not self.statistics_manager:
             return {'工作': 0, '个人': 0, '学习': 0, '其他': 0}
         
-        return self.statistics_manager.get_task_distribution_by_category(user_id)
+        # 使用 get_tag_performance 方法获取标签分布
+        tag_performance = self.statistics_manager.get_tag_performance(user_id, days=30)
+        
+        # 转换为简单的分布字典
+        distribution = {}
+        for item in tag_performance:
+            tag_name = item['tag'] if item['tag'] != '无标签' else '其他'
+            distribution[tag_name] = item['total_tasks']
+        
+        # 如果没有数据，返回默认值
+        if not distribution:
+            distribution = {'工作': 0, '个人': 0, '学习': 0, '其他': 0}
+        
+        return distribution
 
     def create_stats_bar(self, container, current_tasks: List[Dict]):
         """创建统计栏"""
