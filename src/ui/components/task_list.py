@@ -103,19 +103,31 @@ class TaskListComponent:
                 ui.label(task['title']).classes('font-medium')
                 
                 # 任务详情
-                details = []
+                detail_items = []
+                
+                # 收集文本详情
                 if task['due_date']:
-                    details.append(f"📅 {task['due_date']}")
+                    detail_items.append(f"📅 {task['due_date']}")
                 if task['priority'] == 'high':
-                    details.append('⭐ 重要')
-                if task['list_name']:
-                    details.append(f"📂 {task['list_name']}")
+                    detail_items.append('⭐ 重要')
                 if task.get('tags'):
                     tag_names = [tag['name'] for tag in task['tags']]
-                    details.append(f"🏷️ {', '.join(tag_names)}")
+                    detail_items.append(f"🏷️ {', '.join(tag_names)}")
                 
-                if details:
-                    ui.label(' • '.join(details)).classes('text-sm text-grey-6')
+                # 创建详情显示区域
+                if detail_items or task['list_name']:
+                    with ui.row().classes('items-center gap-2 text-sm text-grey-6'):
+                        # 显示文本详情
+                        if detail_items:
+                            ui.label(' • '.join(detail_items))
+                            if task['list_name']:  # 如果有清单且有其他详情，添加分隔符
+                                ui.label('•')
+                        
+                        # 显示清单（彩色圆点）
+                        if task['list_name']:
+                            list_color = task.get('list_color', '#2196F3')
+                            ui.element('div').classes('w-3 h-3 rounded-full').style(f'background-color: {list_color}; min-width: 12px; min-height: 12px;')
+                            ui.label(task['list_name'])
 
     def create_completed_tasks_section(self, container):
         """创建已完成任务区域"""
