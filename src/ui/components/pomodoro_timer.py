@@ -4,11 +4,13 @@ from typing import Dict, Optional, List
 from nicegui import ui, app
 
 
+
 class PomodoroTimerComponent:
-    def __init__(self, pomodoro_manager, task_manager, current_user: Dict):
+    def __init__(self, pomodoro_manager, task_manager, current_user,settings_manager: Dict):
         self.pomodoro_manager = pomodoro_manager
         self.task_manager = task_manager
         self.current_user = current_user
+        self.settings_manager = settings_manager  # 添加设置管理器
 
         self.active_session: Optional[Dict] = None
         self.timer_running = False
@@ -34,6 +36,36 @@ class PomodoroTimerComponent:
         # 通知队列
         self.notification_queue = asyncio.Queue()
         self.setup_notification_handler()
+
+
+        # 从全局设置中加载番茄钟参数
+        self.load_settings()
+
+    def load_settings(self):
+        """从全局设置中加载番茄钟参数"""
+        if not self.settings_manager or not self.current_user:
+            print("无法加载设置: 缺少设置管理器或当前用户")
+            return
+
+        try:
+            settings = self.settings_manager.get_user_settings(self.current_user['user_id'])
+            print(f"加载设置: {settings}")
+
+            # 确保使用正确的键获取值
+            self.duration_minutes = settings.get('pomodoro_work_duration', 25)
+            self.break_minutes = settings.get('pomodoro_short_break_duration', 5)
+
+            # 确保正确获取专注模式值
+            self.focus_mode = bool(settings.get('focus_mode', False))
+
+            #print(
+            #    f"加载设置成功: duration={self.duration_minutes}, break={self.break_minutes}, focus_mode={self.focus_mode}")
+        except Exception as e:
+            print(f"加载设置时出错: {e}")
+            # 设置默认值
+            self.duration_minutes = 25
+            self.break_minutes = 5
+            self.focus_mode = False
 
     def setup_notification_handler(self):
         """设置通知处理程序"""
@@ -81,19 +113,38 @@ class PomodoroTimerComponent:
 
     def show_timer_dialog(self):
         """显示计时器对话框"""
+        print("显示计时器对话框")
+
+        # 检查设置是否更新
+        if app.storage.user.get('settings_updated', False):
+            #print("检测到设置更新，重新加载设置")
+            self.load_settings()
+            app.storage.user['settings_updated'] = False
+        else:
+            # 即使没有更新标志也重新加载设置
+            #print("强制重新加载设置")
+            self.load_settings()
+
+        print(f"当前专注模式: {self.focus_mode}")
+
         # 创建全屏对话框
         dialog = ui.dialog().classes('fullscreen')
+
         # 根据专注模式设置属性
         if self.focus_mode:
+            #print("应用专注模式: 禁用关闭操作")
             dialog.props('no-backdrop-dismiss no-esc-dismiss')
         else:
+            #print("正常模式: 允许关闭")
             dialog.props('no-close-on-outside-click')
 
         with dialog:
             # 使用全屏列布局
             with ui.column().classes('w-full h-full items-center justify-center bg-primary text-white'):
                 # 添加关闭按钮（绝对定位在左上角）
-                ui.button(icon='close', on_click=dialog.close).classes('absolute top-4 left-4').props('flat round text-white')
+                if not self.focus_mode:  # 非专注模式才显示关闭按钮
+                    ui.button(icon='close', on_click=dialog.close).classes('absolute top-4 left-4').props(
+                        'flat round text-white')
 
                 # 显示选中的任务标题
                 if self.selected_task:
@@ -115,14 +166,15 @@ class PomodoroTimerComponent:
                         'size=lg color=white flat')
                     ui.button('暂停', icon='pause', on_click=self.pause_timer).props('size=lg color=white flat')
                     ui.button('重置', icon='refresh', on_click=self.reset_timer).props('size=lg color=white flat')
-                    ui.button('设置', icon='settings', on_click=self.show_settings_dialog).props(
-                        'size=lg color=white flat')
 
         dialog.open()
 
 
     def start_timer(self, task_id: Optional[int] = None):
         """启动计时器"""
+        # 每次启动前重新加载设置，确保使用最新配置
+        self.load_settings()
+
         if self.timer_running:
             return  # 避免重复点击
 
@@ -158,7 +210,7 @@ class PomodoroTimerComponent:
 
         # 发送通知
         ui.notify('计时开始！', type='positive')
-        print(f"启动计时器: 任务ID={task_id}, 阶段={phase}, 时长={duration}分钟")
+        #print(f"启动计时器: 任务ID={task_id}, 阶段={phase}, 时长={duration}分钟")
 
     def pause_timer(self):
         """暂停计时器"""
@@ -172,6 +224,9 @@ class PomodoroTimerComponent:
 
     def reset_timer(self):
         """重置计时器"""
+        # 重新加载设置
+        self.load_settings()
+
         self.timer_running = False
         if self.timer_task:
             self.timer_task.cancel()
@@ -204,9 +259,6 @@ class PomodoroTimerComponent:
                 await asyncio.sleep(1)
                 self.active_session['remaining'] -= 1
                 self.update_timer_display(self.active_session['remaining'])
-                # 每10秒打印一次日志
-                if self.active_session['remaining'] % 10 == 0:
-                    print(f"剩余时间: {self.active_session['remaining']}秒")
 
         except asyncio.CancelledError:
             print("计时任务被取消")
@@ -340,7 +392,7 @@ class PomodoroTimerComponent:
             # 直接启动计时器，而不需要用户再点击开始按钮
             self.start_timer(task_id)
             ui.notify(f'开始专注：{task["title"]}', type='positive')
-            print(f"为任务启动番茄钟: {task['title']} (ID: {task_id})")
+            #print(f"为任务启动番茄钟: {task['title']} (ID: {task_id})")
 
     def set_selected_task(self, task: Optional[Dict]):
         """设置选中的任务"""
