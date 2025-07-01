@@ -143,7 +143,8 @@ class MainPage:
         self.pomodoro_component = PomodoroTimerComponent(
             self.pomodoro_manager,
             self.task_manager,
-            self.current_user
+            self.current_user,
+            self.settings_manager
         )
         
         # 统计组件
