@@ -75,11 +75,14 @@ class MainPage:
         """显示主应用界面"""
         ui.page_title('个人任务与效能管理平台')
         
+        # 初始化组件
+        self.init_components()
+        
         # 加载用户数据
         self.load_user_data()
         
-        # 初始化组件
-        self.init_components()
+        # 加载任务数据
+        self.refresh_current_tasks()
         
         # 主体布局
         with ui.row().classes('w-full h-screen no-wrap') as main_row:
@@ -111,18 +114,19 @@ class MainPage:
         """加载用户数据"""
         if self.current_user:
             self.user_lists = self.list_manager.get_user_lists(self.current_user['user_id'])
-            self.refresh_current_tasks()
 
     def init_components(self):
         """初始化组件"""
         # 侧边栏组件
         self.sidebar_component = SidebarComponent(
             self.list_manager, 
+            self.task_manager,
             self.current_user, 
             self.on_view_change,
             self.handle_logout,
             self.show_settings,
-            self.show_statistics
+            self.show_statistics,
+            self.refresh_and_update_ui
         )
         
         # 任务列表组件
@@ -193,10 +197,17 @@ class MainPage:
     def on_view_change(self, view_type: str):
         """视图切换回调"""
         self.current_view = view_type
+        
+        # 先更新用户数据（包括清单信息）
+        self.load_user_data()
+        
+        # 刷新任务数据
         self.refresh_current_tasks()
         
         # 更新主内容区域
         if self.main_content_component and self.main_content_container:
+            # 确保主内容组件有最新的清单数据
+            self.main_content_component.update_user_lists(self.user_lists)
             self.main_content_component.create_main_content(
                 self.main_content_container,
                 self.current_view,
@@ -331,6 +342,27 @@ class MainPage:
             .sidebar-item.active {
                 background: #e3f2fd;
                 border-right: 3px solid #2196f3;
+            }
+            
+            /* 清单项样式 */
+            .list-item-container {
+                transition: all 0.2s ease;
+            }
+            .list-item-container:hover {
+                background: #f0f8ff;
+            }
+            .list-item-container.active {
+                background: #e3f2fd;
+                border-right: 3px solid #2196f3;
+            }
+            
+            /* 菜单按钮样式 */
+            .list-menu-button {
+                opacity: 0;
+                transition: opacity 0.2s ease;
+            }
+            .list-item-container:hover .list-menu-button {
+                opacity: 1;
             }
         </style>
         """)

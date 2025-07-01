@@ -384,6 +384,44 @@ class TaskManager:
             logger.error(f"更新番茄钟数量失败: {e}")
             return False
     
+    def complete_list_tasks(self, list_id: int) -> bool:
+        """将清单中所有任务标记为完成"""
+        try:
+            query = """
+            UPDATE tasks 
+            SET status = 'completed', updated_at = CURRENT_TIMESTAMP
+            WHERE list_id = %s AND status = 'pending'
+            """
+            success = self.db.execute_update(query, (list_id,))
+            
+            if success:
+                logger.info(f"清单 {list_id} 中的任务已全部标记为完成")
+            
+            return success
+            
+        except Exception as e:
+            logger.error(f"批量完成清单任务失败: {e}")
+            return False
+    
+    def unlink_list_tasks(self, list_id: int) -> bool:
+        """解除清单中所有任务的清单绑定"""
+        try:
+            query = """
+            UPDATE tasks 
+            SET list_id = NULL, updated_at = CURRENT_TIMESTAMP
+            WHERE list_id = %s
+            """
+            success = self.db.execute_update(query, (list_id,))
+            
+            if success:
+                logger.info(f"清单 {list_id} 中的任务已解除绑定")
+            
+            return success
+            
+        except Exception as e:
+            logger.error(f"解除清单任务绑定失败: {e}")
+            return False
+    
     def get_task_summary_stats(self, user_id: int) -> Dict[str, Any]:
         """获取任务统计摘要"""
         try:
