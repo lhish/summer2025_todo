@@ -36,7 +36,7 @@ class SidebarComponent:
         
         with container:
             # 顶部：折叠/展开按钮
-            with ui.row().classes('w-full p-4 justify-center'):
+            with ui.row().classes('w-full p-4 justify-center sidebar-toggle-row'):
                 ui.button(icon='menu', on_click=self.toggle_sidebar).props('flat round')
             
             ui.separator()
@@ -132,10 +132,12 @@ class SidebarComponent:
                     return inner_select
                 
                 # 清单项容器
-                with ui.row().classes('list-item-container w-full p-3 rounded cursor-pointer flex items-center justify-between'):
-                    classes = 'flex-1 items-center gap-3'
-                    if self.current_view == f'list_{user_list["list_id"]}':
-                        classes += ' active'
+                container_classes = 'list-item-container w-full p-3 rounded cursor-pointer flex items-center justify-between'
+                if self.current_view == f'list_{user_list["list_id"]}':
+                    container_classes += ' active'
+                
+                with ui.row().classes(container_classes):
+                    classes = 'flex-1 items-center'
                     if self.sidebar_collapsed:
                         classes += ' justify-center'
                     else:

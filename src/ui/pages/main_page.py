@@ -340,6 +340,9 @@ class MainPage:
             .sidebar-item:hover {
                 background: #f0f8ff;
             }
+            .sidebar-item {
+                border-right: 3px solid transparent;
+            }
             .sidebar-item.active {
                 background: #e3f2fd;
                 border-right: 3px solid #2196f3;
@@ -348,6 +351,7 @@ class MainPage:
             /* 清单项样式 */
             .list-item-container {
                 transition: all 0.2s ease;
+                border-right: 3px solid transparent;
             }
             .list-item-container:hover {
                 background: #f0f8ff;
@@ -364,6 +368,10 @@ class MainPage:
             }
             .list-item-container:hover .list-menu-button {
                 opacity: 1;
+            }
+
+            .sidebar-toggle-row {
+                border-right: 3px solid transparent;
             }
         </style>
         """)
