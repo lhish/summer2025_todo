@@ -2,7 +2,7 @@
 统计仪表板UI组件
 """
 from datetime import datetime, date, timedelta
-from typing import Dict, List, Optional
+from typing import Dict, List
 from nicegui import ui
 
 
@@ -28,9 +28,6 @@ class StatisticsDashboardComponent:
             
             # 本周趋势
             self.create_weekly_chart(user_id)
-            
-            # 任务分布
-            self.create_task_distribution(user_id)
         
         return container
     
@@ -58,27 +55,15 @@ class StatisticsDashboardComponent:
                     
                     # 任务完成进度条
                     with ui.column().classes('flex-1'):
-                        ui.linear_progress(
-                            value=day_data['completed_tasks'] / max(day_data['total_tasks'], 1),
-                            color='positive'
-                        ).classes('w-full')
+                        progress_value = day_data['completed_tasks'] / max(day_data['total_tasks'], 1)
+                        with ui.linear_progress(
+                            value=progress_value,
+                            color='positive',
+                            show_value=False,
+                            size='1.2em'
+                        ).classes('w-full').props('instant-feedback'):
+                            ui.label(f'{progress_value:.2%}').classes('text-xs text-black absolute-center font-medium')
                         ui.label(f"{day_data['completed_tasks']}/{day_data['total_tasks']} 任务").classes('text-xs text-grey-6')
-    
-    def create_task_distribution(self, user_id: int):
-        """创建任务分布图"""
-        ui.label('任务分布').classes('text-h6 text-primary mt-4 mb-2')
-        
-        distribution = self.get_task_distribution(user_id)
-        
-        with ui.card().classes('w-full p-4'):
-            for category, count in distribution.items():
-                with ui.row().classes('w-full items-center gap-2 mb-2'):
-                    ui.label(category).classes('w-20 text-sm')
-                    ui.linear_progress(
-                        value=count / max(sum(distribution.values()), 1),
-                        color='primary'
-                    ).classes('flex-1')
-                    ui.label(str(count)).classes('text-sm text-grey-6')
     
     def get_user_stats(self, user_id: int) -> Dict:
         """获取用户统计数据"""
@@ -133,26 +118,6 @@ class StatisticsDashboardComponent:
             })
         
         return weekly_data
-    
-    def get_task_distribution(self, user_id: int) -> Dict[str, int]:
-        """获取任务分布数据"""
-        if not self.statistics_manager:
-            return {'工作': 0, '个人': 0, '学习': 0, '其他': 0}
-        
-        # 使用 get_tag_performance 方法获取标签分布
-        tag_performance = self.statistics_manager.get_tag_performance(user_id, days=30)
-        
-        # 转换为简单的分布字典
-        distribution = {}
-        for item in tag_performance:
-            tag_name = item['tag'] if item['tag'] != '无标签' else '其他'
-            distribution[tag_name] = item['total_tasks']
-        
-        # 如果没有数据，返回默认值
-        if not distribution:
-            distribution = {'工作': 0, '个人': 0, '学习': 0, '其他': 0}
-        
-        return distribution
 
     def create_stats_bar(self, container, current_tasks: List[Dict]):
         """创建统计栏"""

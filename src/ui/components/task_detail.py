@@ -231,11 +231,12 @@ class TaskDetailComponent:
                 used = self.selected_task.get('used_pomodoros', 0)
                 if used > 0:
                     progress = (used / estimated * 100) if estimated > 0 else 0
+                    progress_value = progress / 100
                     with ui.row().classes('w-full items-center mb-4 p-3 bg-grey-1 rounded'):
                         ui.icon('trending_up').classes('text-primary mr-2')
                         ui.label(f'进度: {used}/{estimated} 番茄钟').classes('text-sm')
-                        ui.linear_progress(value=progress/100, color='primary').classes('flex-1 mx-3')
-                        ui.label(f'{progress:.0f}%').classes('text-xs text-grey-6')
+                        with ui.linear_progress(value=progress_value, color='primary', show_value=False, size='1.5em').classes('flex-1 mx-3').props('instant-feedback'):
+                            ui.label(f'{progress:.2f}%').classes('text-xs text-black absolute-center font-medium')
                 
                 # 分隔线
                 ui.separator().classes('my-4')
