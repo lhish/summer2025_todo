@@ -49,7 +49,7 @@ class PomodoroTimerComponent:
 
         try:
             settings = self.settings_manager.get_user_settings(self.current_user['user_id'])
-            print(f"加载设置: {settings}")
+            #print(f"加载设置: {settings}")
 
             # 确保使用正确的键获取值
             self.duration_minutes = settings.get('pomodoro_work_duration', 25)
@@ -125,7 +125,6 @@ class PomodoroTimerComponent:
             #print("强制重新加载设置")
             self.load_settings()
 
-        print(f"当前专注模式: {self.focus_mode}")
 
         # 创建全屏对话框
         dialog = ui.dialog().classes('fullscreen')
@@ -282,6 +281,18 @@ class PomodoroTimerComponent:
         if self.active_session and self.active_session['phase'] == "focus":
             # 专注阶段完成
             print(">>> 专注阶段完成")
+
+            # 计算实际专注时长（分钟）
+            actual_duration_minutes = max(1, (self.duration_minutes * 60 - self.active_session['remaining']) // 60)
+
+            # 记录专注时长到数据库
+            if self.pomodoro_manager and self.current_user:
+                # 使用新的 record_focus_session 方法
+                self.pomodoro_manager.record_focus_session(
+                    user_id=self.current_user['user_id'],
+                    task_id=self.active_session.get('task_id'),
+                    duration_minutes=actual_duration_minutes
+                )
 
             if self.pomodoro_manager and self.active_session.get('task_id'):
                 self.pomodoro_manager.complete_session(
