@@ -17,6 +17,7 @@ from src.services.statistics_manager import StatisticsManager
 
 # 导入UI组件
 from src.ui.pages.login_page import LoginPage
+from src.ui.pages.register_page import RegisterPage
 from src.ui.pages.main_page import MainPage
 from src.ui.pages.settings_page import SettingsPage
 
@@ -37,6 +38,7 @@ statistics_manager = StatisticsManager(db_manager)
 
 # 初始化页面组件
 login_page = LoginPage(user_manager)
+register_page = RegisterPage(user_manager)
 main_page = MainPage(
     db_manager, user_manager, list_manager, tag_manager, task_manager,
     pomodoro_manager, settings_manager, ai_assistant, statistics_manager
@@ -61,6 +63,12 @@ def login():
     """登录页面"""
     login_handler = login_page.create_login_page_route()
     login_handler()
+
+@ui.page('/register')
+def register():
+    """注册页面"""
+    register_handler = register_page.create_register_page_route()
+    register_handler()
 
 if __name__ in {"__main__", "__mp_main__"}:
     # 运行应用

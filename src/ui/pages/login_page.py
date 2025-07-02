@@ -20,6 +20,7 @@ class LoginPage:
         with ui.column().classes('w-full h-screen flex items-center justify-center bg-grey-1'):
             with ui.card().classes('w-96 p-8 shadow-lg'):
                 ui.label('个人任务与效能管理平台').classes('text-h4 text-center mb-6 text-primary')
+                ui.label('登录您的账户').classes('text-h6 text-center mb-4 text-grey-8')
                 
                 email_input = ui.input('邮箱', placeholder='输入您的邮箱').classes('w-full mb-4')
                 password_input = ui.input('密码', placeholder='输入您的密码', password=True).classes('w-full mb-4')
@@ -47,27 +48,11 @@ class LoginPage:
                     else:
                         ui.notify('邮箱或密码错误', type='negative')
                 
-                def handle_register():
-                    email = email_input.value
-                    password = password_input.value
-                    
-                    if not email or not password:
-                        ui.notify('请填写所有字段', type='warning')
-                        return
-                    
-                    if len(password) < 6:
-                        ui.notify('密码长度至少为6位', type='warning')
-                        return
-                    
-                    user_id = self.user_manager.create_user(email, password)
-                    if user_id:
-                        ui.notify('注册成功！请登录', type='positive')
-                    else:
-                        ui.notify('注册失败，邮箱可能已存在', type='negative')
+                ui.button('登录', on_click=handle_login).classes('w-full mb-4').props('color=primary')
                 
-                with ui.row().classes('w-full gap-2'):
-                    ui.button('登录', on_click=handle_login).classes('flex-1').props('color=primary')
-                    ui.button('注册', on_click=handle_register).classes('flex-1').props('flat color=primary')
+                with ui.row().classes('w-full justify-center'):
+                    ui.label('还没有账户？').classes('text-grey-6')
+                    ui.link('立即注册', target='/register').classes('text-primary underline ml-1')
         
         return current_user
 
