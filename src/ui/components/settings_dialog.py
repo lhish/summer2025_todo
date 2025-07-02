@@ -183,10 +183,12 @@ class SettingsDialogComponent:
 
             # 显示今日进度
             progress_data = self.settings_manager.get_daily_focus_goal_progress(self.current_user['user_id'])
+            progress_value = progress_data['progress_percentage'] / 100
             
             ui.label(f"今日进度：{progress_data['completed_minutes']}/{progress_data['target_minutes']} 分钟").classes('text-body1 mt-2')
             
-            ui.linear_progress(value=progress_data['progress_percentage'] / 100).classes('w-full')
+            with ui.linear_progress(value=progress_value, show_value=False, size='1.5em').classes('w-full').props('instant-feedback'):
+                ui.label(f'{progress_data["progress_percentage"]:.2f}%').classes('text-sm text-black absolute-center font-medium')
 
             ui.button(
                 '保存目标设置',
