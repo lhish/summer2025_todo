@@ -27,6 +27,8 @@ class TaskManager:
                    priority: str = 'medium',
                    estimated_pomodoros: int = 1,
                    list_id: int = None,
+                   repeat_cycle: str = 'none',
+                   reminder_time: str = None,
                    tags: List[str] = None) -> Optional[int]:
         """
         创建任务
@@ -39,6 +41,8 @@ class TaskManager:
             priority: 优先级 (high, medium, low)
             estimated_pomodoros: 预估番茄钟数量
             list_id: 清单ID
+            repeat_cycle: 重复周期 (none, daily, weekly, monthly)
+            reminder_time: 提醒时间 (HH:MM格式)
             tags: 标签列表
             
         Returns:
@@ -47,11 +51,11 @@ class TaskManager:
         try:
             # 创建任务
             query = """
-            INSERT INTO tasks (user_id, list_id, title, description, due_date, priority, estimated_pomodoros)
-            VALUES (%s, %s, %s, %s, %s, %s, %s)
+            INSERT INTO tasks (user_id, list_id, title, description, due_date, priority, estimated_pomodoros, repeat_cycle, reminder_time)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
             """
             
-            params = (user_id, list_id, title, description, due_date, priority, estimated_pomodoros)
+            params = (user_id, list_id, title, description, due_date, priority, estimated_pomodoros, repeat_cycle, reminder_time)
             
             if self.db.execute_update(query, params):
                 task_id = self.db.get_last_insert_id()
@@ -260,6 +264,8 @@ class TaskManager:
                    priority: str = None,
                    estimated_pomodoros: int = None,
                    list_id: int = None,
+                   repeat_cycle: str = None,
+                   reminder_time: str = None,
                    tags: List[str] = None) -> bool:
         """
         更新任务
@@ -272,6 +278,8 @@ class TaskManager:
             priority: 优先级
             estimated_pomodoros: 预估番茄钟数量
             list_id: 清单ID
+            repeat_cycle: 重复周期 (none, daily, weekly, monthly)
+            reminder_time: 提醒时间 (HH:MM格式)
             tags: 标签列表
             
         Returns:
@@ -305,6 +313,14 @@ class TaskManager:
             if list_id is not None:
                 updates.append("list_id = %s")
                 params.append(list_id)
+            
+            if repeat_cycle is not None:
+                updates.append("repeat_cycle = %s")
+                params.append(repeat_cycle)
+            
+            if reminder_time is not None:
+                updates.append("reminder_time = %s")
+                params.append(reminder_time)
             
             if not updates and tags is None:
                 return True

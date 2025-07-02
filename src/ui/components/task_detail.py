@@ -23,7 +23,8 @@ class TaskDetailComponent:
         self.priority_select = None
         self.estimated_pomodoros_input = None
         self.tags_input = None
-        self.reminder_input = None
+        self.reminder_hour_select = None
+        self.reminder_minute_select = None
         self.repeat_select = None
 
     def create_task_detail_panel(self, container):
@@ -34,7 +35,7 @@ class TaskDetailComponent:
         container.clear()
         
         with container:
-            with ui.column().classes('w-full h-full p-6 overflow-y-auto'):
+            with ui.column().classes('w-96 h-full p-4 overflow-hidden').style('max-height: 100vh;'):
                 # 顶部操作按钮行
                 with ui.row().classes('w-full gap-4 mb-6'):
                     # 完成按钮
@@ -122,53 +123,94 @@ class TaskDetailComponent:
                         list_name = self.selected_task.get('list_name', '无')
                         ui.label(f'清单: {list_name}').classes('text-grey-8')
                     
-                    # 提醒（占位，暂未实现）
+                    # 提醒时间（时间选择器）
                     with ui.row().classes('w-full items-center'):
                         ui.icon('notifications').classes('text-grey-6 mr-3')
-                        self.reminder_input = ui.input(
-                            placeholder='设置提醒时间',
-                            value=''
-                        ).classes('flex-1').props('borderless disabled')
-                        ui.label('(暂未开放)').classes('text-xs text-grey-5 ml-2')
+                        ui.label('提醒时间:').classes('min-w-fit mr-2')
+                        
+                        # 解析现有的提醒时间
+                        reminder_time = self.selected_task.get('reminder_time', '') or ''
+                        hour_value = '08'
+                        minute_value = '00'
+                        
+                        if reminder_time:
+                            try:
+                                # 处理 datetime.timedelta 类型
+                                if hasattr(reminder_time, 'total_seconds'):
+                                    # 从 timedelta 转换为小时:分钟
+                                    total_seconds = int(reminder_time.total_seconds())
+                                    hours = total_seconds // 3600
+                                    minutes = (total_seconds % 3600) // 60
+                                    hour_value = f'{hours:02d}'
+                                    minute_value = f'{minutes:02d}'
+                                elif isinstance(reminder_time, str) and ':' in reminder_time:
+                                    # 处理字符串格式 "HH:MM"
+                                    hour_value, minute_value = reminder_time.split(':')
+                            except:
+                                # 如果解析失败，使用默认值
+                                pass
+                        
+                        # 小时选择框
+                        hour_options = [f'{i:02d}' for i in range(24)]
+                        self.reminder_hour_select = ui.select(
+                            options=hour_options,
+                            value=hour_value,
+                            label='时'
+                        ).classes('w-20').props('dense')
+                        
+                        ui.label(':').classes('mx-1')
+                        
+                        # 分钟选择框
+                        minute_options = [f'{i:02d}' for i in range(0, 60, 5)]  # 每5分钟一个选项
+                        self.reminder_minute_select = ui.select(
+                            options=minute_options,
+                            value=minute_value,
+                            label='分'
+                        ).classes('w-20').props('dense')
+                        
+                        # 清除按钮
+                        def clear_reminder():
+                            self.reminder_hour_select.value = '08'
+                            self.reminder_minute_select.value = '00'
+                        
+                        ui.button(icon='clear', on_click=clear_reminder).props('flat round size=sm').tooltip('清除提醒')
                     
-                    # 重复（占位，暂未实现）
+                    # 重复周期（可编辑）
                     with ui.row().classes('w-full items-center'):
                         ui.icon('repeat').classes('text-grey-6 mr-3')
                         
-                        # 获取重复设置并显示
-                        repeat_value = self.selected_task.get('repeat_cycle', 'none')
-                        repeat_mapping = {
+                        # 重复周期选择框
+                        repeat_options = {
                             'none': '不重复',
-                            'daily': '每天', 
+                            'daily': '每天',
                             'weekly': '每周',
                             'monthly': '每月'
                         }
-                        repeat_text = repeat_mapping.get(repeat_value, '不重复')
                         
-                        ui.label(f'重复: {repeat_text}').classes('text-grey-8 flex-1')
-                        ui.label('(暂未开放)').classes('text-xs text-grey-5 ml-2')
-                        
-                        # 保留选择框引用为None，避免后续代码错误
-                        self.repeat_select = None
+                        current_repeat = self.selected_task.get('repeat_cycle', 'none')
+                        self.repeat_select = ui.select(
+                            options=repeat_options,
+                            value=current_repeat,
+                            label='重复周期'
+                        ).classes('flex-1').props('borderless')
                     
-                    # 优先级
+                    # 优先级（可编辑）
                     with ui.row().classes('w-full items-center'):
                         ui.icon('flag').classes('text-grey-6 mr-3')
                         
-                        # 获取优先级并显示
-                        priority_value = self.selected_task.get('priority', 'medium')
-                        priority_mapping = {
+                        # 优先级选择框
+                        priority_options = {
                             'low': '低优先级',
                             'medium': '中优先级',
                             'high': '高优先级'
                         }
-                        priority_text = priority_mapping.get(priority_value, '中优先级')
-                        priority_color = self.get_priority_color(priority_value)
                         
-                        ui.label(f'优先级: {priority_text}').classes(f'text-{priority_color} flex-1')
-                        
-                        # 保留选择框引用为None，避免后续代码错误
-                        self.priority_select = None
+                        current_priority = self.selected_task.get('priority', 'medium')
+                        self.priority_select = ui.select(
+                            options=priority_options,
+                            value=current_priority,
+                            label='优先级'
+                        ).classes('flex-1').props('borderless')
                     
                     # 备注
                     with ui.column().classes('w-full'):
@@ -224,7 +266,8 @@ class TaskDetailComponent:
         self.priority_select = None
         self.estimated_pomodoros_input = None
         self.tags_input = None
-        self.reminder_input = None
+        self.reminder_hour_select = None
+        self.reminder_minute_select = None
         self.repeat_select = None
         
         self.on_close()
@@ -266,7 +309,39 @@ class TaskDetailComponent:
             tag_names = [tag['name'] for tag in current_tags] if current_tags else []
             self.tags_input.value = ', '.join(tag_names)
         
-        # 注意：优先级和重复选择框现在是只读标签，不需要重置
+        if self.reminder_hour_select and self.reminder_minute_select:
+            reminder_time = self.selected_task.get('reminder_time', '') or ''
+            if reminder_time:
+                try:
+                    # 处理 datetime.timedelta 类型
+                    if hasattr(reminder_time, 'total_seconds'):
+                        # 从 timedelta 转换为小时:分钟
+                        total_seconds = int(reminder_time.total_seconds())
+                        hours = total_seconds // 3600
+                        minutes = (total_seconds % 3600) // 60
+                        hour_value = f'{hours:02d}'
+                        minute_value = f'{minutes:02d}'
+                    elif isinstance(reminder_time, str) and ':' in reminder_time:
+                        # 处理字符串格式 "HH:MM"
+                        hour_value, minute_value = reminder_time.split(':')
+                    else:
+                        hour_value = '08'
+                        minute_value = '00'
+                    
+                    self.reminder_hour_select.value = hour_value
+                    self.reminder_minute_select.value = minute_value
+                except:
+                    self.reminder_hour_select.value = '08'
+                    self.reminder_minute_select.value = '00'
+            else:
+                self.reminder_hour_select.value = '08'
+                self.reminder_minute_select.value = '00'
+        
+        if self.repeat_select:
+            self.repeat_select.value = self.selected_task.get('repeat_cycle', 'none')
+        
+        if self.priority_select:
+            self.priority_select.value = self.selected_task.get('priority', 'medium')
 
     def show_task_detail(self, task: Dict, container):
         """显示任务详情"""
@@ -286,7 +361,7 @@ class TaskDetailComponent:
         """保存任务更改到数据库"""
         if not self.selected_task or not all([
             self.title_input, self.description_input, self.due_date_input,
-            self.estimated_pomodoros_input, self.tags_input
+            self.estimated_pomodoros_input, self.tags_input, self.priority_select, self.repeat_select
         ]):
             ui.notify('表单未正确初始化', type='negative')
             return False
@@ -300,10 +375,18 @@ class TaskDetailComponent:
             title = self.title_input.value.strip() if self.title_input.value else ''
             description = self.description_input.value.strip() if self.description_input.value else None
             due_date_value = self.due_date_input.value
-            # 优先级现在是只读显示，不从表单获取
-            priority = self.selected_task.get('priority', 'medium')
+            priority = self.priority_select.value if self.priority_select else 'medium'
+            repeat_cycle = self.repeat_select.value if self.repeat_select else 'none'
             estimated_pomodoros = int(self.estimated_pomodoros_input.value)
             tags_str = self.tags_input.value.strip() if self.tags_input.value else ''
+            
+            # 组合提醒时间
+            reminder_time = None
+            if self.reminder_hour_select and self.reminder_minute_select:
+                hour = self.reminder_hour_select.value
+                minute = self.reminder_minute_select.value
+                if hour and minute:
+                    reminder_time = f"{hour}:{minute}"
             
             # 处理截止日期 - 修复类型错误
             due_date = None
@@ -326,6 +409,14 @@ class TaskDetailComponent:
                         ui.notify('日期格式不正确', type='negative')
                         return False
             
+            # 验证提醒时间格式
+            if reminder_time:
+                import re
+                time_pattern = re.compile(r'^([01]?[0-9]|2[0-3]):[0-5][0-9]$')
+                if not time_pattern.match(reminder_time):
+                    ui.notify('提醒时间格式不正确，请使用 HH:MM 格式（如 08:30）', type='negative')
+                    return False
+            
             # 处理标签
             tags = []
             if tags_str:
@@ -336,8 +427,11 @@ class TaskDetailComponent:
                 title != self.selected_task['title'] or
                 description != self.selected_task.get('description') or
                 due_date != self.selected_task.get('due_date') or
+                priority != self.selected_task.get('priority', 'medium') or
+                repeat_cycle != self.selected_task.get('repeat_cycle', 'none') or
                 estimated_pomodoros != self.selected_task.get('estimated_pomodoros', 1) or
-                self._tags_changed(tags)
+                self._tags_changed(tags) or
+                reminder_time != self.selected_task.get('reminder_time')
             )
             
             if not has_changes:
@@ -351,6 +445,8 @@ class TaskDetailComponent:
                 description=description,
                 due_date=due_date,
                 priority=priority,
+                repeat_cycle=repeat_cycle,
+                reminder_time=reminder_time,
                 estimated_pomodoros=estimated_pomodoros,
                 tags=tags
             )
@@ -364,7 +460,9 @@ class TaskDetailComponent:
                     'description': description,
                     'due_date': due_date,
                     'priority': priority,
+                    'repeat_cycle': repeat_cycle,
                     'estimated_pomodoros': estimated_pomodoros,
+                    'reminder_time': reminder_time,
                 })
                 
                 # 刷新任务数据以获取最新的标签信息
@@ -503,7 +601,7 @@ class TaskDetailComponent:
         """检查是否有未保存的更改"""
         if not self.selected_task or not all([
             self.title_input, self.description_input, self.due_date_input,
-            self.estimated_pomodoros_input, self.tags_input
+            self.estimated_pomodoros_input, self.tags_input, self.priority_select, self.repeat_select
         ]):
             return False
         
@@ -512,9 +610,34 @@ class TaskDetailComponent:
             title = self.title_input.value.strip()
             description = self.description_input.value.strip() if self.description_input.value else None
             due_date_str = self.due_date_input.value.strip()
-            # 优先级现在是只读的，不检查更改
+            priority = self.priority_select.value if self.priority_select else 'medium'
+            repeat_cycle = self.repeat_select.value if self.repeat_select else 'none'
             estimated_pomodoros = int(self.estimated_pomodoros_input.value)
             tags_str = self.tags_input.value.strip()
+            
+            # 检查提醒时间是否改变
+            current_reminder = None
+            if self.reminder_hour_select and self.reminder_minute_select:
+                hour = self.reminder_hour_select.value
+                minute = self.reminder_minute_select.value
+                if hour and minute:
+                    current_reminder = f"{hour}:{minute}"
+            
+            # 处理原始提醒时间
+            original_reminder_raw = self.selected_task.get('reminder_time', '') or None
+            original_reminder = None
+            if original_reminder_raw:
+                try:
+                    if hasattr(original_reminder_raw, 'total_seconds'):
+                        # 从 timedelta 转换为 HH:MM 格式
+                        total_seconds = int(original_reminder_raw.total_seconds())
+                        hours = total_seconds // 3600
+                        minutes = (total_seconds % 3600) // 60
+                        original_reminder = f'{hours:02d}:{minutes:02d}'
+                    elif isinstance(original_reminder_raw, str):
+                        original_reminder = original_reminder_raw
+                except:
+                    pass
             
             # 处理截止日期
             due_date = None
@@ -534,8 +657,11 @@ class TaskDetailComponent:
                 title != self.selected_task['title'] or
                 description != self.selected_task.get('description') or
                 due_date != self.selected_task.get('due_date') or
+                priority != self.selected_task.get('priority', 'medium') or
+                repeat_cycle != self.selected_task.get('repeat_cycle', 'none') or
                 estimated_pomodoros != self.selected_task.get('estimated_pomodoros', 1) or
-                self._tags_changed(tags)
+                self._tags_changed(tags) or
+                current_reminder != original_reminder
             )
         except:
             return True  # 如果检查出错，认为有更改

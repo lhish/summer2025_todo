@@ -45,6 +45,7 @@ CREATE TABLE tasks (
     priority ENUM('high', 'medium', 'low') DEFAULT 'medium',
     status ENUM('pending', 'completed') DEFAULT 'pending',
     repeat_cycle ENUM('none', 'daily', 'weekly', 'monthly') DEFAULT 'none',
+    reminder_time TIME,
     estimated_pomodoros INT DEFAULT 1,
     used_pomodoros INT DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
