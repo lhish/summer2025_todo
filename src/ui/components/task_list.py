@@ -24,12 +24,24 @@ class TaskListComponent:
             if task_input.value.strip():
                 self.create_quick_task(task_input.value.strip())
                 task_input.value = ''
+                ui.run_javascript('''
+                    setTimeout(() => {
+                        const input = document.querySelector('input[placeholder="添加任务..."]');
+                        if (input) input.focus();
+                    }, 100);
+                ''')
         
         def handle_enter_key(e):
             # 检查是否按下了Enter键
             if e.args.get('key') == 'Enter' and task_input.value.strip():
                 self.create_quick_task(task_input.value.strip())
                 task_input.value = ''
+                ui.run_javascript('''
+                    setTimeout(() => {
+                        const input = document.querySelector('input[placeholder="添加任务..."]');
+                        if (input) input.focus();
+                    }, 100);
+                ''')
         
         with container:
             with ui.row().classes('w-full mb-6'):
