@@ -253,19 +253,19 @@ class TaskListComponent:
         
         with container:
             with ui.row().classes('w-full gap-6 mb-6 p-4 bg-white rounded shadow-sm'):
-                with ui.column().classes('text-center'):
+                with ui.column().classes('text-center items-center'):
                     ui.label(f"{stats['estimated_time']}分钟").classes('text-h6 font-bold text-blue-6')
                     ui.label('预计时间').classes('text-sm text-grey-6')
                 
-                with ui.column().classes('text-center'):
+                with ui.column().classes('text-center items-center'):
                     ui.label(str(stats['pending_tasks'])).classes('text-h6 font-bold text-orange-6')
                     ui.label('待完成任务').classes('text-sm text-grey-6')
                 
-                with ui.column().classes('text-center'):
+                with ui.column().classes('text-center items-center'):
                     ui.label(f"{stats['focus_time']}分钟").classes('text-h6 font-bold text-green-6')
                     ui.label('已专注时间').classes('text-sm text-grey-6')
                 
-                with ui.column().classes('text-center'):
+                with ui.column().classes('text-center items-center'):
                     ui.label(str(stats['completed_tasks'])).classes('text-h6 font-bold text-purple-6')
                     ui.label('已完成任务').classes('text-sm text-grey-6')
 
