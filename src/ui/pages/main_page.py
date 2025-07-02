@@ -165,7 +165,8 @@ class MainPage:
         # 设置组件
         self.settings_component = SettingsDialogComponent(
             self.settings_manager,
-            self.current_user
+            self.current_user,
+            self.handle_logout
         )
         
         # 主内容组件
