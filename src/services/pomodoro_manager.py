@@ -32,6 +32,14 @@ class PomodoroManager:
             return session_id
         return None
 
+    def complete_session(self, task_id: int, start_time: datetime, duration_minutes: int) -> bool:
+        """记录完成的专注会话（兼容旧接口）"""
+        return self.record_focus_session(
+            user_id=self.current_user['user_id'] if self.current_user else None,
+            task_id=task_id,
+            duration_minutes=duration_minutes
+        )
+
     def complete_focus_session(self, session_id: int, end_time: datetime = None) -> bool:
         """标记一个专注或休息时段已完成，并更新相关数据"""
         try:
@@ -63,18 +71,33 @@ class PomodoroManager:
             logger.exception(f"在完成会话时发生异常: {e}")
             return False
 
-    def _update_today_focus_minutes(self, user_id: int, duration_minutes: int):
-        """将专注时长累加到用户每日专注记录中"""
-        date_str = datetime.now().strftime('%Y-%m-%d')
-        query_check = "SELECT * FROM user_daily_focus WHERE user_id = %s AND date = %s"
-        result = self.db.execute_query(query_check, (user_id, date_str))
+    def record_focus_session(self, user_id: int, task_id: Optional[int], duration_minutes: int) -> bool:
+        """记录专注会话到数据库"""
+        if duration_minutes <= 0:
+            return False
 
-        if result:
-            query_update = "UPDATE user_daily_focus SET focus_minutes = focus_minutes + %s WHERE user_id = %s AND date = %s"
-            self.db.execute_update(query_update, (duration_minutes, user_id, date_str))
+        start_time = datetime.now() - timedelta(minutes=duration_minutes)
+        end_time = datetime.now()
+
+        query = """
+        INSERT INTO focus_sessions 
+            (user_id, task_id, session_type, start_time, end_time, duration_minutes, is_completed)
+        VALUES 
+            (%s, %s, 'work', %s, %s, %s, TRUE)
+        """
+        params = (user_id, task_id, start_time, end_time, duration_minutes)
+
+        success = self.db.execute_update(query, params)
+        if success:
+            logger.info(f"记录专注会话: 用户 {user_id}, 任务 {task_id}, 时长 {duration_minutes} 分钟")
+
+            # 如果关联了任务，更新任务的已使用番茄数
+            if task_id:
+                self.update_task_used_pomodoros(task_id)
         else:
-            query_insert = "INSERT INTO user_daily_focus (user_id, date, focus_minutes) VALUES (%s, %s, %s)"
-            self.db.execute_update(query_insert, (user_id, date_str, duration_minutes))
+            logger.error(f"记录专注会话失败: 用户 {user_id}, 时长 {duration_minutes} 分钟")
+
+        return success
 
     def get_session_by_id(self, session_id: int) -> Optional[Dict]:
         """根据会话ID获取会话信息"""
