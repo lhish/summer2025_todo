@@ -180,19 +180,19 @@ class StatisticsDashboardComponent:
         """获取当前视图的统计数据"""
         if not self.current_user:
             return {'estimated_time': 0, 'pending_tasks': 0, 'focus_time': 0, 'completed_tasks': 0}
-        
+
         pending_tasks = [task for task in current_tasks if task['status'] == 'pending']
         completed_tasks = [task for task in current_tasks if task['status'] == 'completed']
-        
+
         # 计算预计时间
         estimated_time = sum((task['estimated_pomodoros'] - task['used_pomodoros']) * 25 for task in pending_tasks)
-        
+
         # 今日专注时间
         focus_time = self.pomodoro_manager.get_today_focus_duration(self.current_user['user_id'])
-        
+
         return {
             'estimated_time': estimated_time,
             'pending_tasks': len(pending_tasks),
-            'focus_time': focus_time,
+            'focus_time': focus_time,  # 这里返回分钟数
             'completed_tasks': len(completed_tasks)
-        } 
+        }
