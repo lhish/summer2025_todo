@@ -8,10 +8,11 @@ from typing import Dict, List, Callable, Optional
 
 
 class TaskListComponent:
-    def __init__(self, task_manager, pomodoro_manager, settings_manager, current_user: Dict, on_task_select: Callable, on_start_pomodoro: Callable, on_refresh: Callable):
+    def __init__(self, task_manager, pomodoro_manager, settings_manager, tag_manager, current_user: Dict, on_task_select: Callable, on_start_pomodoro: Callable, on_refresh: Callable):
         self.task_manager = task_manager
         self.pomodoro_manager = pomodoro_manager
         self.settings_manager = settings_manager
+        self.tag_manager = tag_manager
         self.current_user = current_user
         self.on_task_select = on_task_select
         self.on_start_pomodoro = on_start_pomodoro
@@ -65,9 +66,9 @@ class TaskListComponent:
         elif self.current_view.startswith('tag_'):
             # 如果是标签视图，获取标签名并添加到任务
             tag_id = int(self.current_view.split('_')[1])
-            # 这里需要获取标签名称，但由于我们没有tag_manager的引用，
-            # 我们先跳过这部分，或者需要在构造函数中传入tag_manager
-            pass
+            tag_info = self.tag_manager.get_tag_by_id(tag_id)
+            if tag_info:
+                tags = [tag_info['name']]
         
         task_id = self.task_manager.create_task(
             user_id=self.current_user['user_id'],

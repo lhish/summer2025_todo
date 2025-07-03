@@ -133,6 +133,7 @@ class MainPage:
             self.task_manager,
             self.pomodoro_manager,
             self.settings_manager,
+            self.tag_manager,
             self.current_user,
             self.on_task_select,
             self.start_pomodoro_for_task,
