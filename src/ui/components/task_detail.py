@@ -249,7 +249,7 @@ class TaskDetailComponent:
             # 详情栏底部按钮条（绝对定位，靠左，无背景无阴影）
             with ui.row().classes('absolute left-0 bottom-0 w-full p-3 z-10 justify-start mb-4'):
                 ui.button('关闭', icon='close', on_click=self.close_task_detail).props('flat color=grey size=md').tooltip('关闭详情面板')
-                ui.button('重置', icon='refresh', on_click=self.reset_form).props('flat color=grey size=md').tooltip('重置到初始状态')
+                # ui.button('重置', icon='refresh', on_click=self.reset_form).props('flat color=grey size=md').tooltip('重置到初始状态')
 
     def close_task_detail(self):
         """关闭任务详情面板"""
@@ -271,65 +271,54 @@ class TaskDetailComponent:
 
 
 
-    def reset_form(self):
-        """重置表单到初始状态"""
-        if not self.initial_task_state:
-            ui.notify('无法重置：没有初始状态数据', type='warning')
-            return
-        
-        try:
-            # 重置各个字段到初始状态
-            if self.title_input:
-                self.title_input.value = self.initial_task_state['title']
-            
-            if self.description_input:
-                self.description_input.value = self.initial_task_state['description']
-            
-            if self.due_date_input:
-                due_date_value = self.initial_task_state['due_date']
-                if due_date_value and isinstance(due_date_value, str):
-                    due_date_value = due_date_value.split()[0]
-                self.due_date_input.value = due_date_value or ''
-            
-            if self.estimated_pomodoros_input:
-                self.estimated_pomodoros_input.value = self.initial_task_state['estimated_pomodoros']
-            
-            if self.repeat_select:
-                self.repeat_select.value = self.initial_task_state['repeat_cycle']
-            
-            if self.priority_select:
-                self.priority_select.value = self.initial_task_state['priority']
-            
-            # 重置标签到初始状态
-            initial_tag_names = [tag['name'] for tag in self.initial_task_state['tags']]
-            
-            # 更新任务标签到初始状态
-            success = self.task_manager.update_task(
-                task_id=self.selected_task['task_id'],
-                title=self.initial_task_state['title'],
-                description=self.initial_task_state['description'],
-                due_date=self.initial_task_state['due_date'],
-                priority=self.initial_task_state['priority'],
-                estimated_pomodoros=self.initial_task_state['estimated_pomodoros'],
-                repeat_cycle=self.initial_task_state['repeat_cycle'],
-                tags=initial_tag_names
-            )
-            
-            if success:
-                # 重新获取任务数据以更新标签显示
-                updated_task = self.task_manager.get_task_by_id(self.selected_task['task_id'])
-                if updated_task:
-                    self.selected_task = updated_task
-                    self.refresh_tags_display()
-                
-                ui.notify('已重置到初始状态', type='positive')
-                # 触发界面更新
-                self.on_task_update()
-            else:
-                ui.notify('重置失败', type='negative')
-                
-        except Exception as e:
-            ui.notify(f'重置失败: {str(e)}', type='negative')
+    # def reset_form(self):
+    #     """重置表单到初始状态"""
+    #     if not self.initial_task_state:
+    #         ui.notify('无法重置：没有初始状态数据', type='warning')
+    #         return
+    #     try:
+    #         # 重置各个字段到初始状态
+    #         if self.title_input:
+    #             self.title_input.value = self.initial_task_state['title']
+    #         if self.description_input:
+    #             self.description_input.value = self.initial_task_state['description']
+    #         if self.due_date_input:
+    #             due_date_value = self.initial_task_state['due_date']
+    #             if due_date_value and isinstance(due_date_value, str):
+    #                 due_date_value = due_date_value.split()[0]
+    #             self.due_date_input.value = due_date_value or ''
+    #         if self.estimated_pomodoros_input:
+    #             self.estimated_pomodoros_input.value = self.initial_task_state['estimated_pomodoros']
+    #         if self.repeat_select:
+    #             self.repeat_select.value = self.initial_task_state['repeat_cycle']
+    #         if self.priority_select:
+    #             self.priority_select.value = self.initial_task_state['priority']
+    #         # 重置标签到初始状态
+    #         initial_tag_names = [tag['name'] for tag in self.initial_task_state['tags']]
+    #         # 更新任务标签到初始状态
+    #         success = self.task_manager.update_task(
+    #             task_id=self.selected_task['task_id'],
+    #             title=self.initial_task_state['title'],
+    #             description=self.initial_task_state['description'],
+    #             due_date=self.initial_task_state['due_date'],
+    #             priority=self.initial_task_state['priority'],
+    #             estimated_pomodoros=self.initial_task_state['estimated_pomodoros'],
+    #             repeat_cycle=self.initial_task_state['repeat_cycle'],
+    #             tags=initial_tag_names
+    #         )
+    #         if success:
+    #             # 重新获取任务数据以更新标签显示
+    #             updated_task = self.task_manager.get_task_by_id(self.selected_task['task_id'])
+    #             if updated_task:
+    #                 self.selected_task = updated_task
+    #                 self.refresh_tags_display()
+    #             ui.notify('已重置到初始状态', type='positive')
+    #             # 触发界面更新
+    #             self.on_task_update()
+    #         else:
+    #             ui.notify('重置失败', type='negative')
+    #     except Exception as e:
+    #         ui.notify(f'重置失败: {str(e)}', type='negative')
 
     def show_task_detail(self, task: Dict, container):
         """显示任务详情"""
