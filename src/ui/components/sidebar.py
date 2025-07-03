@@ -71,59 +71,60 @@ class SidebarComponent:
             container.classes(add='sidebar-collapsed')
         
         with container:
+            # 使用flexbox布局，让中间的滚动区域能够自适应
+            with ui.column().classes('w-full h-full flex').style('height: 100vh;'):
             # 顶部：折叠/展开按钮
-            with ui.row().classes('w-full p-4 justify-center sidebar-toggle-row'):
-                ui.button(icon='menu', on_click=self.toggle_sidebar).props('flat round')
-            
-            ui.separator()
-            
-            # 第一部分：默认视图
-            with ui.column().classes('w-full p-2'):
-                self.create_sidebar_item('我的一天', 'sunny', 'my_day')
-                self.create_sidebar_item('计划内', 'event', 'planned')
-                self.create_sidebar_item('重要', 'star', 'important')
-                self.create_sidebar_item('任务', 'list', 'all')
-            
-            ui.separator()
-            
-            # 第二部分：标签
-            self.sidebar_tags_container = ui.column().classes('w-full p-2')
-            self.refresh_sidebar_tags()
-            
-            ui.separator()
-
-            # 占据剩余空间
-            ui.element('div').style('margin-top: auto')
-            
-            # 底部区域
-            with ui.column().classes('w-full'):
-                # 已登录状态 - 只在展开时显示
-                if not self.sidebar_collapsed:
-                    ui.separator()
-                    with ui.column().classes('w-full p-1'):
-                        with ui.column().classes('gap-1'):
-                            ui.label(self.current_user['email']).classes('text-sm font-medium')
-                            ui.label('已登录').classes('text-xs text-grey-6')
-                    ui.separator()
+                with ui.row().classes('w-full p-4 justify-center sidebar-toggle-row'):
+                    ui.button(icon='menu', on_click=self.toggle_sidebar).props('flat round')
                 
-                # 操作按钮 - 始终显示，根据展开/收起状态调整布局
-                with ui.column().classes('w-full p-4 pb-6'):
-                    if self.sidebar_collapsed:
-                        # 收起时：竖直排列居中
-                        with ui.column().classes('w-full items-center gap-3'):
-                            ui.button(icon='add', on_click=self.show_create_tag_dialog).props('flat round size=sm')
-                            ui.button(icon='analytics', on_click=self.on_statistics).props('flat round size=sm')
-                            ui.button(icon='settings', on_click=self.on_settings).props('flat round size=sm')
-                            ui.button(icon='logout', on_click=self.on_logout).props('flat round size=sm')
-                    else:
-                        # 展开时：新建标签按钮靠左，其他按钮靠右
-                        with ui.row().classes('w-full justify-between items-center gap-2'):
-                            ui.button('新建标签', icon='add', on_click=self.show_create_tag_dialog).props('flat').classes('text-sm font-medium')
-                            
-                            with ui.row().classes('gap-2'):
+                ui.separator()
+                
+                # 第一部分：默认视图
+                with ui.column().classes('w-full p-2'):
+                    self.create_sidebar_item('我的一天', 'sunny', 'my_day')
+                    self.create_sidebar_item('计划内', 'event', 'planned')
+                    self.create_sidebar_item('重要', 'star', 'important')
+                    self.create_sidebar_item('任务', 'list', 'all')
+                
+                ui.separator()
+                
+                # 第二部分：标签 - 使用flex-1让这部分占据剩余空间
+                with ui.column().classes('w-full p-1 flex-1').style('min-height: 0;'):
+                    self.sidebar_tags_container = ui.column().classes('w-full h-full')
+                    self.refresh_sidebar_tags()
+
+                # 占据剩余空间
+                ui.element('div').style('margin-top: auto')
+                
+                # 底部区域
+                with ui.column().classes('w-full'):
+                    # 已登录状态 - 只在展开时显示
+                    if not self.sidebar_collapsed:
+                        ui.separator()
+                        with ui.column().classes('w-full p-1'):
+                            with ui.column().classes('gap-1'):
+                                ui.label(self.current_user['email']).classes('text-sm font-medium')
+                                ui.label('已登录').classes('text-xs text-grey-6')
+                        ui.separator()
+                    
+                    # 操作按钮 - 始终显示，根据展开/收起状态调整布局
+                    with ui.column().classes('w-full p-4 pb-6'):
+                        if self.sidebar_collapsed:
+                            # 收起时：竖直排列居中
+                            with ui.column().classes('w-full items-center gap-3'):
+                                ui.button(icon='add', on_click=self.show_create_tag_dialog).props('flat round size=sm')
                                 ui.button(icon='analytics', on_click=self.on_statistics).props('flat round size=sm')
                                 ui.button(icon='settings', on_click=self.on_settings).props('flat round size=sm')
                                 ui.button(icon='logout', on_click=self.on_logout).props('flat round size=sm')
+                        else:
+                            # 展开时：新建标签按钮靠左，其他按钮靠右
+                            with ui.row().classes('w-full justify-between items-center gap-2'):
+                                ui.button('新建标签', icon='add', on_click=self.show_create_tag_dialog).props('flat').classes('text-sm font-medium')
+                                
+                                with ui.row().classes('gap-2'):
+                                    ui.button(icon='analytics', on_click=self.on_statistics).props('flat round size=sm')
+                                    ui.button(icon='settings', on_click=self.on_settings).props('flat round size=sm')
+                                    ui.button(icon='logout', on_click=self.on_logout).props('flat round size=sm')
 
     def create_sidebar_item(self, label: str, icon: str, view_type: str):
         """创建侧边栏项目"""
@@ -158,8 +159,8 @@ class SidebarComponent:
         
         # 为每个标签创建侧边栏项目
         with self.sidebar_tags_container:
-            # 始终使用滚动容器，隐藏滚动条
-            with ui.scroll_area().classes('w-full max-h-64 no-scrollbar').style('scrollbar-width: none; -ms-overflow-style: none;'):
+            # 始终使用滚动容器，高度自适应，隐藏滚动条
+            with ui.scroll_area().classes('w-full h-full no-scrollbar').style('scrollbar-width: none; -ms-overflow-style: none;'):
                 with ui.column().classes('w-full gap-1'):
                     for user_tag in self.user_tags:
                         self.create_tag_item(user_tag)
