@@ -70,6 +70,9 @@ def register():
     register_handler()
 
 if __name__ in {"__main__", "__mp_main__"}:
+    # 配置静态文件服务
+    app.add_static_files('/static', 'static')
+    
     # 运行应用
     ui.run(
         host=APP_CONFIG['host'],
