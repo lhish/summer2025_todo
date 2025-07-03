@@ -129,6 +129,7 @@ class TaskDetailComponent:
                                         text=tag['name'], 
                                         icon='label', 
                                         color=tag.get('color', '#757575'),
+                                        text_color='white',
                                         removable=True,
                                         on_click=lambda t=tag: edit_tag(t)
                                     ).on('remove', lambda t=tag: remove_tag(t))
@@ -794,6 +795,7 @@ class TaskDetailComponent:
                         text=tag['name'], 
                         icon='label', 
                         color=tag.get('color', '#757575'),
+                        text_color='white',
                         removable=True,
                         on_click=lambda t=tag: edit_tag(t)
                     ).on('remove', lambda t=tag: remove_tag(t))
