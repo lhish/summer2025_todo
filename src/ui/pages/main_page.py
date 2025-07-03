@@ -272,7 +272,7 @@ class MainPage:
         
         # 更新侧边栏
         if self.sidebar_component:
-            self.sidebar_component.refresh_user_tags()
+            self.sidebar_component.refresh_sidebar_tags()
         
         # 更新主内容区域
         if self.main_content_component and self.main_content_container:
@@ -282,6 +282,14 @@ class MainPage:
                 self.current_view,
                 self.task_list_component
             )
+        
+        # 更新任务详情组件（如果正在显示）
+        if self.task_detail_component and self.task_detail_open and self.selected_task:
+            # 重新获取任务数据以获取最新的标签信息
+            updated_task = self.task_manager.get_task_by_id(self.selected_task['task_id'])
+            if updated_task:
+                self.selected_task = updated_task
+                self.task_detail_component.show_task_detail(updated_task, self.task_detail_container)
 
     def add_css_styles(self):
         """添加CSS样式"""

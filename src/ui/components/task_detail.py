@@ -112,6 +112,8 @@ class TaskDetailComponent:
                                         ):
                                             self.selected_task['tags'] = updated_tags
                                             self.refresh_tags_display()
+                                            # 通知主界面更新
+                                            self.on_task_update()
                                             ui.notify(f'已移除标签: {tag_data["name"]}', type='positive')
                                         else:
                                             ui.notify('移除标签失败', type='negative')
@@ -647,6 +649,8 @@ class TaskDetailComponent:
                         ):
                             self.selected_task['tags'] = updated_tags
                             self.refresh_tags_display()
+                            # 通知主界面更新
+                            self.on_task_update()
                             ui.notify(f'已移除标签: {tag_data["name"]}', type='positive')
                         else:
                             ui.notify('移除标签失败', type='negative')
@@ -713,6 +717,8 @@ class TaskDetailComponent:
                 # 清空输入框
                 self.new_tag_input.value = ''
                 self.refresh_tags_display()
+                # 通知主界面更新
+                self.on_task_update()
                 ui.notify(f'已添加标签: {tag_name}', type='positive')
         else:
             ui.notify('添加标签失败', type='negative')
