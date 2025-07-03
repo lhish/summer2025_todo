@@ -19,15 +19,15 @@ class SettingsDialogComponent:
         """显示设置对话框"""
         settings = self.settings_manager.get_user_settings(self.current_user['user_id'])
 
-        with ui.dialog().classes('w-4xl max-w-4xl') as dialog:
-            with ui.card().classes('w-full gap-0').style('height: 600px; padding: 0; border-radius: 8px; overflow: hidden;'):
+        with ui.dialog().classes('w-5xl max-w-5xl') as dialog:
+            with ui.card().classes('w-full gap-0').style('height: 700px; padding: 0; border-radius: 8px; overflow: hidden;'):
                 # 标题栏
                 with ui.row().classes('w-full items-center bg-primary text-white').style('margin: 0; padding: 16px; position: relative;'):
                     ui.button(icon='close', on_click=dialog.close).props('flat color=white size=sm').style('position: absolute; right: 16px;')
                     ui.label('设置').classes('text-h5 font-bold w-full text-center')
 
                 # 主体内容区域
-                with ui.row().classes('w-full').style('height: 540px; margin: 0;'):
+                with ui.row().classes('w-full').style('height: 640px; margin: 0;'):
                     # 左侧导航栏
                     with ui.column().classes('').style('width: 200px; min-width: 200px; height: 100%; padding: 16px; margin: 0; background: #f5f5f5;') as nav_container:
                         self.navigation_container = nav_container
@@ -121,6 +121,16 @@ class SettingsDialogComponent:
                 value=settings.get('pomodoro_long_break_interval', 4),
                 min=1, max=10
             ).classes('w-full')
+            
+            auto_start_next = ui.checkbox(
+                '自动开始下一个番茄钟',
+                value=bool(settings.get('auto_start_next_pomodoro', False))
+            ).classes('w-full')
+
+            auto_start_break = ui.checkbox(
+                '自动开始休息',
+                value=bool(settings.get('auto_start_break', False))
+            ).classes('w-full')
 
             ui.button(
                 '保存番茄钟设置',
@@ -129,7 +139,9 @@ class SettingsDialogComponent:
                     'pomodoro_work_duration': int(work_duration.value),
                     'pomodoro_short_break_duration': int(short_break.value),
                     'pomodoro_long_break_duration': int(long_break.value),
-                    'pomodoro_long_break_interval': int(long_break_interval.value)
+                    'pomodoro_long_break_interval': int(long_break_interval.value),
+                    'auto_start_next_pomodoro': auto_start_next.value,
+                    'auto_start_break': auto_start_break.value
                 })
             ).props('color=primary').classes('mt-4')
 
@@ -150,23 +162,11 @@ class SettingsDialogComponent:
                 value=settings.get('notification_sound', 'default')
             ).classes('w-full')
 
-            auto_start_next = ui.checkbox(
-                '自动开始下一个番茄钟',
-                value=bool(settings.get('auto_start_next_pomodoro', False))
-            ).classes('w-full')
-
-            auto_start_break = ui.checkbox(
-                '自动开始休息',
-                value=bool(settings.get('auto_start_break', False))
-            ).classes('w-full')
-
             ui.button(
                 '保存通知设置',
                 icon='save',
                 on_click=lambda: self.save_notification_settings({
-                    'notification_sound': notification_sound.value,
-                    'auto_start_next_pomodoro': auto_start_next.value,
-                    'auto_start_break': auto_start_break.value
+                    'notification_sound': notification_sound.value
                 })
             ).props('color=primary').classes('mt-4')
 
