@@ -46,8 +46,8 @@ class TaskDetailComponent:
             # 使用响应式设计的主容器，添加滚动支持
             with ui.scroll_area().classes('h-full').style('height: calc(100vh - 60px);'):
                 with ui.column().classes('w-full min-w-80 max-w-md p-4 mx-auto').style('min-height: 100%;'):
-                    # 顶部操作按钮行
-                    with ui.row().classes('w-full gap-2 sm:gap-4 mb-4 sm:mb-6 justify-center'):
+                    # 任务标题（可编辑）和操作按钮
+                    with ui.row().classes('w-full items-center gap-2 mb-4'):
                         # 完成按钮
                         def toggle_complete():
                             new_status = 'completed' if self.selected_task['status'] == 'pending' else 'pending'
@@ -59,22 +59,15 @@ class TaskDetailComponent:
                         # 反转图标显示逻辑：未完成时显示空心圆，已完成时显示实心勾选
                         complete_icon = 'radio_button_unchecked' if self.selected_task['status'] == 'pending' else 'check_circle'
                         complete_color = 'grey' if self.selected_task['status'] == 'pending' else 'green'
-                        complete_text = '标记完成' if self.selected_task['status'] == 'pending' else '已完成'
                         
-                        with ui.column().classes('items-center'):
-                            ui.button(icon=complete_icon, on_click=toggle_complete).props(f'flat round size=lg color={complete_color}')
-                            ui.label(complete_text).classes('text-xs text-center mt-1')
+                        ui.button(icon=complete_icon, on_click=toggle_complete).props(f'flat round size=md color={complete_color}')
                         
                         # 播放按钮（番茄钟）
                         def start_pomodoro():
                             self.on_start_pomodoro(self.selected_task['task_id'])
                         
-                        with ui.column().classes('items-center'):
-                            ui.button(icon='play_arrow', on_click=start_pomodoro).props('flat round size=lg color=primary')
-                            ui.label('开始专注').classes('text-xs text-center mt-1')
-                    
-                    # 任务标题（可编辑）和操作按钮
-                    with ui.row().classes('w-full items-center gap-2 mb-4'):
+                        ui.button(icon='play_arrow', on_click=start_pomodoro).props('flat round size=md color=primary')
+                        
                         self.title_input = ui.input(
                             placeholder='输入任务标题...',
                             value=self.selected_task['title']
@@ -211,10 +204,6 @@ class TaskDetailComponent:
                         
                         # 备注
                         with ui.column().classes('w-full gap-2'):
-                            with ui.row().classes('w-full items-center gap-2 sm:gap-3'):
-                                ui.icon('notes').classes('text-grey-6 flex-shrink-0')
-                                ui.label('备注').classes('text-sm sm:text-base')
-                            
                             self.description_input = ui.textarea(
                                 placeholder='添加备注...',
                                 value=self.selected_task.get('description', '') or ''
