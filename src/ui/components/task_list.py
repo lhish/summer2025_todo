@@ -8,9 +8,10 @@ from typing import Dict, List, Callable, Optional
 
 
 class TaskListComponent:
-    def __init__(self, task_manager, pomodoro_manager, current_user: Dict, on_task_select: Callable, on_start_pomodoro: Callable, on_refresh: Callable):
+    def __init__(self, task_manager, pomodoro_manager, settings_manager, current_user: Dict, on_task_select: Callable, on_start_pomodoro: Callable, on_refresh: Callable):
         self.task_manager = task_manager
         self.pomodoro_manager = pomodoro_manager
+        self.settings_manager = settings_manager
         self.current_user = current_user
         self.on_task_select = on_task_select
         self.on_start_pomodoro = on_start_pomodoro
@@ -287,8 +288,12 @@ class TaskListComponent:
         pending_tasks = [task for task in self.current_tasks if task['status'] == 'pending']
         completed_tasks = [task for task in self.current_tasks if task['status'] == 'completed']
         
-        # 计算预计时间
-        estimated_time = sum((task.get('estimated_pomodoros', 1) - task.get('used_pomodoros', 0)) * 25 for task in pending_tasks)
+        # 获取用户的番茄长度设置
+        user_settings = self.settings_manager.get_user_settings(self.current_user['user_id'])
+        pomodoro_duration = user_settings.get('pomodoro_work_duration', 25) if user_settings else 25
+        
+        # 计算预计时间（使用用户设定的番茄长度）
+        estimated_time = sum((task.get('estimated_pomodoros', 1) - task.get('used_pomodoros', 0)) * pomodoro_duration for task in pending_tasks)
         
         # 今日专注时间
         focus_time = self.pomodoro_manager.get_today_focus_duration(self.current_user['user_id'])
