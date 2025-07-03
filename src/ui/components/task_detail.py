@@ -35,225 +35,227 @@ class TaskDetailComponent:
         container.clear()
         
         with container:
-            with ui.column().classes('w-96 h-full p-4 overflow-hidden').style('max-height: 100vh;'):
-                # 顶部操作按钮行
-                with ui.row().classes('w-full gap-4 mb-6'):
-                    # 完成按钮
-                    def toggle_complete():
-                        new_status = 'completed' if self.selected_task['status'] == 'pending' else 'pending'
-                        self.task_manager.toggle_task_status(self.selected_task['task_id'], new_status)
-                        self.selected_task['status'] = new_status
-                        self.on_task_update()
-                        self.create_task_detail_panel(container)  # 刷新面板
-                    
-                    # 反转图标显示逻辑：未完成时显示空心圆，已完成时显示实心勾选
-                    complete_icon = 'radio_button_unchecked' if self.selected_task['status'] == 'pending' else 'check_circle'
-                    complete_color = 'grey' if self.selected_task['status'] == 'pending' else 'green'
-                    complete_text = '标记完成' if self.selected_task['status'] == 'pending' else '已完成'
-                    
-                    with ui.column().classes('items-center'):
-                        ui.button(icon=complete_icon, on_click=toggle_complete).props(f'flat round size=lg color={complete_color}')
-                        ui.label(complete_text).classes('text-xs text-center mt-1')
-                    
-                    # 播放按钮（番茄钟）
-                    def start_pomodoro():
-                        self.on_start_pomodoro(self.selected_task['task_id'])
-                    
-                    with ui.column().classes('items-center'):
-                        ui.button(icon='play_arrow', on_click=start_pomodoro).props('flat round size=lg color=primary')
-                        ui.label('开始专注').classes('text-xs text-center mt-1')
-                
-                # 任务标题（可编辑）和操作按钮
-                with ui.row().classes('w-full items-center gap-2 mb-4'):
-                    self.title_input = ui.input(
-                        placeholder='输入任务标题...',
-                        value=self.selected_task['title']
-                    ).classes('flex-1 text-h6 font-medium').props('borderless')
-                    
-                    # 操作按钮
-                    ui.button(icon='refresh', on_click=self.reset_form).props('flat round size=sm color=grey').tooltip('重置表单')
-                    ui.button(icon='delete', on_click=self.delete_task).props('flat round size=sm color=negative').tooltip('删除任务')
-                
-                # 分隔线
-                ui.separator().classes('mb-4')
-                
-                # 任务属性编辑区域
-                with ui.column().classes('w-full gap-4'):
-                    
-                    # +标签
-                    with ui.row().classes('w-full items-center'):
-                        ui.icon('local_offer').classes('text-grey-6 mr-3')
-                        current_tags = self.selected_task.get('tags', [])
-                        tag_names = [tag['name'] for tag in current_tags] if current_tags else []
-                        self.tags_input = ui.input(
-                            placeholder='添加标签 (用逗号分隔)',
-                            value=', '.join(tag_names)
-                        ).classes('flex-1').props('borderless')
-                    
-                    # 番茄数
-                    with ui.row().classes('w-full items-center'):
-                        ui.icon('timer').classes('text-grey-6 mr-3')
-                        ui.label('预估番茄钟:').classes('min-w-fit mr-2')
-                        self.estimated_pomodoros_input = ui.number(
-                            value=self.selected_task.get('estimated_pomodoros', 1),
-                            min=1,
-                            max=20
-                        ).classes('w-20').props('borderless dense')
-                        ui.label('个').classes('ml-1')
+            # 使用响应式设计的主容器，添加滚动支持
+            with ui.scroll_area().classes('h-full').style('height: calc(100vh - 60px);'):
+                with ui.column().classes('w-full min-w-80 max-w-md p-4 mx-auto').style('min-height: 100%;'):
+                    # 顶部操作按钮行
+                    with ui.row().classes('w-full gap-2 sm:gap-4 mb-4 sm:mb-6 justify-center'):
+                        # 完成按钮
+                        def toggle_complete():
+                            new_status = 'completed' if self.selected_task['status'] == 'pending' else 'pending'
+                            self.task_manager.toggle_task_status(self.selected_task['task_id'], new_status)
+                            self.selected_task['status'] = new_status
+                            self.on_task_update()
+                            self.create_task_detail_panel(container)  # 刷新面板
                         
-                        # 显示已使用数量
-                        used_pomodoros = self.selected_task.get('used_pomodoros', 0)
-                        if used_pomodoros > 0:
-                            ui.label(f'(已用 {used_pomodoros} 个)').classes('text-sm text-grey-6 ml-2')
+                        # 反转图标显示逻辑：未完成时显示空心圆，已完成时显示实心勾选
+                        complete_icon = 'radio_button_unchecked' if self.selected_task['status'] == 'pending' else 'check_circle'
+                        complete_color = 'grey' if self.selected_task['status'] == 'pending' else 'green'
+                        complete_text = '标记完成' if self.selected_task['status'] == 'pending' else '已完成'
+                        
+                        with ui.column().classes('items-center'):
+                            ui.button(icon=complete_icon, on_click=toggle_complete).props(f'flat round size=lg color={complete_color}')
+                            ui.label(complete_text).classes('text-xs text-center mt-1')
+                        
+                        # 播放按钮（番茄钟）
+                        def start_pomodoro():
+                            self.on_start_pomodoro(self.selected_task['task_id'])
+                        
+                        with ui.column().classes('items-center'):
+                            ui.button(icon='play_arrow', on_click=start_pomodoro).props('flat round size=lg color=primary')
+                            ui.label('开始专注').classes('text-xs text-center mt-1')
                     
-                    # 到期日
-                    with ui.row().classes('w-full items-center'):
-                        ui.icon('event').classes('text-grey-6 mr-3')
-                        due_date_value = self.selected_task.get('due_date')
-                        if due_date_value and isinstance(due_date_value, str):
-                            due_date_value = due_date_value.split()[0]
-                        self.due_date_input = ui.input(
-                            placeholder='设置到期日',
-                            value=due_date_value or ''
-                        ).props('type=date borderless').classes('flex-1')
+                    # 任务标题（可编辑）和操作按钮
+                    with ui.row().classes('w-full items-center gap-2 mb-4'):
+                        self.title_input = ui.input(
+                            placeholder='输入任务标题...',
+                            value=self.selected_task['title']
+                        ).classes('flex-1 text-base sm:text-lg font-medium').props('borderless')
+                        
+                        # 操作按钮
+                        ui.button(icon='refresh', on_click=self.reset_form).props('flat round size=sm color=grey').tooltip('重置表单')
+                        ui.button(icon='delete', on_click=self.delete_task).props('flat round size=sm color=negative').tooltip('删除任务')
                     
-                    # 清单
-                    with ui.row().classes('w-full items-center'):
-                        ui.icon('list').classes('text-grey-6 mr-3')
-                        list_name = self.selected_task.get('list_name', '无')
-                        ui.label(f'清单: {list_name}').classes('text-grey-8')
+                    # 分隔线
+                    ui.separator().classes('mb-4')
                     
-                    # 提醒时间（时间选择器）
-                    with ui.row().classes('w-full items-center'):
-                        ui.icon('notifications').classes('text-grey-6 mr-3')
-                        ui.label('提醒时间:').classes('min-w-fit mr-2')
+                    # 任务属性编辑区域
+                    with ui.column().classes('w-full gap-3 sm:gap-4'):
                         
-                        # 解析现有的提醒时间
-                        reminder_time = self.selected_task.get('reminder_time', '') or ''
-                        hour_value = '08'
-                        minute_value = '00'
+                        # +标签
+                        with ui.row().classes('w-full items-center gap-2 sm:gap-3'):
+                            ui.icon('local_offer').classes('text-grey-6 flex-shrink-0')
+                            current_tags = self.selected_task.get('tags', [])
+                            tag_names = [tag['name'] for tag in current_tags] if current_tags else []
+                            self.tags_input = ui.input(
+                                placeholder='添加标签 (用逗号分隔)',
+                                value=', '.join(tag_names)
+                            ).classes('flex-1 min-w-0').props('borderless')
                         
-                        if reminder_time:
-                            try:
-                                # 处理 datetime.timedelta 类型
-                                if hasattr(reminder_time, 'total_seconds'):
-                                    # 从 timedelta 转换为小时:分钟
-                                    total_seconds = int(reminder_time.total_seconds())
-                                    hours = total_seconds // 3600
-                                    minutes = (total_seconds % 3600) // 60
-                                    hour_value = f'{hours:02d}'
-                                    minute_value = f'{minutes:02d}'
-                                elif isinstance(reminder_time, str) and ':' in reminder_time:
-                                    # 处理字符串格式 "HH:MM"
-                                    hour_value, minute_value = reminder_time.split(':')
-                            except:
-                                # 如果解析失败，使用默认值
-                                pass
+                        # 番茄数
+                        with ui.row().classes('w-full items-center gap-2 sm:gap-3'):
+                            ui.icon('timer').classes('text-grey-6 flex-shrink-0')
+                            ui.label('预估番茄钟:').classes('min-w-fit text-sm sm:text-base')
+                            self.estimated_pomodoros_input = ui.number(
+                                value=self.selected_task.get('estimated_pomodoros', 1),
+                                min=1,
+                                max=20
+                            ).classes('w-16 sm:w-20').props('borderless dense')
+                            ui.label('个').classes('text-sm sm:text-base')
+                            
+                            # 显示已使用数量
+                            used_pomodoros = self.selected_task.get('used_pomodoros', 0)
+                            if used_pomodoros > 0:
+                                ui.label(f'(已用 {used_pomodoros} 个)').classes('text-xs sm:text-sm text-grey-6')
                         
-                        # 小时选择框
-                        hour_options = [f'{i:02d}' for i in range(24)]
-                        self.reminder_hour_select = ui.select(
-                            options=hour_options,
-                            value=hour_value,
-                            label='时'
-                        ).classes('w-20').props('dense')
+                        # 到期日
+                        with ui.row().classes('w-full items-center gap-2 sm:gap-3'):
+                            ui.icon('event').classes('text-grey-6 flex-shrink-0')
+                            due_date_value = self.selected_task.get('due_date')
+                            if due_date_value and isinstance(due_date_value, str):
+                                due_date_value = due_date_value.split()[0]
+                            self.due_date_input = ui.input(
+                                placeholder='设置到期日',
+                                value=due_date_value or ''
+                            ).props('type=date borderless').classes('flex-1 min-w-0')
                         
-                        ui.label(':').classes('mx-1')
+                        # 清单
+                        with ui.row().classes('w-full items-center gap-2 sm:gap-3'):
+                            ui.icon('list').classes('text-grey-6 flex-shrink-0')
+                            list_name = self.selected_task.get('list_name', '无')
+                            ui.label(f'清单: {list_name}').classes('text-grey-8 text-sm sm:text-base')
                         
-                        # 分钟选择框
-                        minute_options = [f'{i:02d}' for i in range(0, 60, 5)]  # 每5分钟一个选项
-                        self.reminder_minute_select = ui.select(
-                            options=minute_options,
-                            value=minute_value,
-                            label='分'
-                        ).classes('w-20').props('dense')
+                        # 提醒时间（时间选择器）
+                        with ui.row().classes('w-full items-center gap-2 sm:gap-3'):
+                            ui.icon('notifications').classes('text-grey-6 flex-shrink-0')
+                            ui.label('提醒时间:').classes('min-w-fit text-sm sm:text-base')
+                            
+                            # 解析现有的提醒时间
+                            reminder_time = self.selected_task.get('reminder_time', '') or ''
+                            hour_value = '08'
+                            minute_value = '00'
+                            
+                            if reminder_time:
+                                try:
+                                    # 处理 datetime.timedelta 类型
+                                    if hasattr(reminder_time, 'total_seconds'):
+                                        # 从 timedelta 转换为小时:分钟
+                                        total_seconds = int(reminder_time.total_seconds())
+                                        hours = total_seconds // 3600
+                                        minutes = (total_seconds % 3600) // 60
+                                        hour_value = f'{hours:02d}'
+                                        minute_value = f'{minutes:02d}'
+                                    elif isinstance(reminder_time, str) and ':' in reminder_time:
+                                        # 处理字符串格式 "HH:MM"
+                                        hour_value, minute_value = reminder_time.split(':')
+                                except:
+                                    # 如果解析失败，使用默认值
+                                    pass
+                            
+                            # 小时选择框
+                            hour_options = [f'{i:02d}' for i in range(24)]
+                            self.reminder_hour_select = ui.select(
+                                options=hour_options,
+                                value=hour_value,
+                                label='时'
+                            ).classes('w-16 sm:w-20').props('dense')
+                            
+                            ui.label(':').classes('mx-1')
+                            
+                            # 分钟选择框
+                            minute_options = [f'{i:02d}' for i in range(0, 60, 5)]  # 每5分钟一个选项
+                            self.reminder_minute_select = ui.select(
+                                options=minute_options,
+                                value=minute_value,
+                                label='分'
+                            ).classes('w-16 sm:w-20').props('dense')
+                            
+                            # 清除按钮
+                            def clear_reminder():
+                                self.reminder_hour_select.value = '08'
+                                self.reminder_minute_select.value = '00'
+                            
+                            ui.button(icon='clear', on_click=clear_reminder).props('flat round size=sm').tooltip('清除提醒')
                         
-                        # 清除按钮
-                        def clear_reminder():
-                            self.reminder_hour_select.value = '08'
-                            self.reminder_minute_select.value = '00'
+                        # 重复周期（可编辑）
+                        with ui.row().classes('w-full items-center gap-2 sm:gap-3'):
+                            ui.icon('repeat').classes('text-grey-6 flex-shrink-0')
+                            
+                            # 重复周期选择框
+                            repeat_options = {
+                                'none': '不重复',
+                                'daily': '每天',
+                                'weekly': '每周',
+                                'monthly': '每月'
+                            }
+                            
+                            current_repeat = self.selected_task.get('repeat_cycle', 'none')
+                            self.repeat_select = ui.select(
+                                options=repeat_options,
+                                value=current_repeat,
+                                label='重复周期'
+                            ).classes('flex-1 min-w-0').props('borderless')
                         
-                        ui.button(icon='clear', on_click=clear_reminder).props('flat round size=sm').tooltip('清除提醒')
+                        # 优先级（可编辑）
+                        with ui.row().classes('w-full items-center gap-2 sm:gap-3'):
+                            ui.icon('flag').classes('text-grey-6 flex-shrink-0')
+                            
+                            # 优先级选择框
+                            priority_options = {
+                                'low': '低优先级',
+                                'medium': '中优先级',
+                                'high': '高优先级'
+                            }
+                            
+                            current_priority = self.selected_task.get('priority', 'medium')
+                            self.priority_select = ui.select(
+                                options=priority_options,
+                                value=current_priority,
+                                label='优先级'
+                            ).classes('flex-1 min-w-0').props('borderless')
+                        
+                        # 备注
+                        with ui.column().classes('w-full gap-2'):
+                            with ui.row().classes('w-full items-center gap-2 sm:gap-3'):
+                                ui.icon('notes').classes('text-grey-6 flex-shrink-0')
+                                ui.label('备注').classes('text-sm sm:text-base')
+                            
+                            self.description_input = ui.textarea(
+                                placeholder='添加备注...',
+                                value=self.selected_task.get('description', '') or ''
+                            ).classes('w-full min-h-20').props('borderless auto-grow')
                     
-                    # 重复周期（可编辑）
-                    with ui.row().classes('w-full items-center'):
-                        ui.icon('repeat').classes('text-grey-6 mr-3')
-                        
-                        # 重复周期选择框
-                        repeat_options = {
-                            'none': '不重复',
-                            'daily': '每天',
-                            'weekly': '每周',
-                            'monthly': '每月'
-                        }
-                        
-                        current_repeat = self.selected_task.get('repeat_cycle', 'none')
-                        self.repeat_select = ui.select(
-                            options=repeat_options,
-                            value=current_repeat,
-                            label='重复周期'
-                        ).classes('flex-1').props('borderless')
+                    # 底部区域
+                    ui.space().classes('flex-grow min-h-4')
                     
-                    # 优先级（可编辑）
-                    with ui.row().classes('w-full items-center'):
-                        ui.icon('flag').classes('text-grey-6 mr-3')
-                        
-                        # 优先级选择框
-                        priority_options = {
-                            'low': '低优先级',
-                            'medium': '中优先级',
-                            'high': '高优先级'
-                        }
-                        
-                        current_priority = self.selected_task.get('priority', 'medium')
-                        self.priority_select = ui.select(
-                            options=priority_options,
-                            value=current_priority,
-                            label='优先级'
-                        ).classes('flex-1').props('borderless')
+                    # 进度显示
+                    estimated = self.selected_task.get('estimated_pomodoros', 1)
+                    used = self.selected_task.get('used_pomodoros', 0)
+                    if used > 0:
+                        progress = (used / estimated * 100) if estimated > 0 else 0
+                        progress_value = progress / 100
+                        with ui.row().classes('w-full items-center mb-4 p-3 bg-grey-1 rounded'):
+                            ui.icon('trending_up').classes('text-primary flex-shrink-0')
+                            ui.label(f'进度: {used}/{estimated} 番茄钟').classes('text-xs sm:text-sm flex-shrink-0')
+                            with ui.linear_progress(value=progress_value, color='primary', show_value=False, size='1.5em').classes('flex-1 mx-2 sm:mx-3').props('instant-feedback'):
+                                ui.label(f'{progress:.2f}%').classes('text-xs text-black absolute-center font-medium')
                     
-                    # 备注
-                    with ui.column().classes('w-full'):
-                        with ui.row().classes('w-full items-center mb-2'):
-                            ui.icon('notes').classes('text-grey-6 mr-3')
-                            ui.label('备注').classes('text-grey-8')
-                        
-                        self.description_input = ui.textarea(
-                            placeholder='添加备注...',
-                            value=self.selected_task.get('description', '') or ''
-                        ).classes('w-full ml-9').props('borderless auto-grow')
-                
-                # 底部区域
-                ui.space().classes('flex-grow')
-                
-                # 进度显示
-                estimated = self.selected_task.get('estimated_pomodoros', 1)
-                used = self.selected_task.get('used_pomodoros', 0)
-                if used > 0:
-                    progress = (used / estimated * 100) if estimated > 0 else 0
-                    progress_value = progress / 100
-                    with ui.row().classes('w-full items-center mb-4 p-3 bg-grey-1 rounded'):
-                        ui.icon('trending_up').classes('text-primary mr-2')
-                        ui.label(f'进度: {used}/{estimated} 番茄钟').classes('text-sm')
-                        with ui.linear_progress(value=progress_value, color='primary', show_value=False, size='1.5em').classes('flex-1 mx-3').props('instant-feedback'):
-                            ui.label(f'{progress:.2f}%').classes('text-xs text-black absolute-center font-medium')
-                
-                # 分隔线
-                ui.separator().classes('my-4')
-                
-                # 底部操作区
-                with ui.column().classes('w-full gap-3'):
-                    # 保存和取消按钮
-                    with ui.row().classes('w-full gap-2'):
-                        ui.button('保存', icon='save', on_click=self.save_task_changes).props('color=primary').classes('flex-1')
-                        ui.button('取消', icon='close', on_click=self.close_with_unsaved_check).props('color=grey').classes('flex-1')
+                    # 分隔线
+                    ui.separator().classes('my-4')
                     
-                    # 创建日期
-                    with ui.row().classes('w-full justify-center mt-2'):
-                        created_at = self.selected_task.get('created_at', '未知')
-                        if isinstance(created_at, str) and len(created_at) > 10:
-                            created_at = created_at[:10]  # 只显示日期部分
-                        ui.label(f'创建于 {created_at}').classes('text-xs text-grey-6')
+                    # 底部操作区
+                    with ui.column().classes('w-full gap-3'):
+                        # 保存和取消按钮
+                        with ui.row().classes('w-full gap-2'):
+                            ui.button('保存', icon='save', on_click=self.save_task_changes).props('color=primary').classes('flex-1')
+                            ui.button('取消', icon='close', on_click=self.close_with_unsaved_check).props('color=grey').classes('flex-1')
+                        
+                        # 创建日期
+                        with ui.row().classes('w-full justify-center mt-2'):
+                            created_at = self.selected_task.get('created_at', '未知')
+                            if isinstance(created_at, str) and len(created_at) > 10:
+                                created_at = created_at[:10]  # 只显示日期部分
+                            ui.label(f'创建于 {created_at}').classes('text-xs text-grey-6')
 
     def close_task_detail(self):
         """关闭任务详情面板"""
