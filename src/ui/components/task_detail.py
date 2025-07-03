@@ -133,7 +133,7 @@ class TaskDetailComponent:
                                 
                                 # 添加新标签的输入框
                                 self.new_tag_input = ui.input(
-                                    placeholder='添加标签（最多15字）'
+                                    placeholder='添加标签'
                                 ).classes('flex-shrink-0 w-32').props('dense borderless maxlength=15')
                                 # 添加回车键支持
                                 self.new_tag_input.on('keydown', self.handle_tag_enter_key)
@@ -490,7 +490,7 @@ class TaskDetailComponent:
                 
                 # 重新创建输入框
                 self.new_tag_input = ui.input(
-                    placeholder='添加标签（最多15字）'
+                    placeholder='添加标签'
                 ).classes('flex-shrink-0 w-32').props('dense borderless maxlength=15')
                 # 添加回车键支持
                 self.new_tag_input.on('keydown', self.handle_tag_enter_key)
@@ -508,7 +508,7 @@ class TaskDetailComponent:
             # 重新聚焦到输入框
             ui.run_javascript('''
                 setTimeout(() => {
-                    const input = document.querySelector('input[placeholder="添加标签（最多15字）"]');
+                    const input = document.querySelector('input[placeholder="添加标签"]');
                     if (input) input.focus();
                 }, 100);
             ''')
