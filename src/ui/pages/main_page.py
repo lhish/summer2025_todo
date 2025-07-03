@@ -132,6 +132,7 @@ class MainPage:
         self.task_list_component = TaskListComponent(
             self.task_manager,
             self.pomodoro_manager,
+            self.settings_manager,
             self.current_user,
             self.on_task_select,
             self.start_pomodoro_for_task,
@@ -166,7 +167,8 @@ class MainPage:
         self.settings_component = SettingsDialogComponent(
             self.settings_manager,
             self.current_user,
-            self.handle_logout
+            self.handle_logout,
+            self.refresh_and_update_ui
         )
         
         # 主内容组件

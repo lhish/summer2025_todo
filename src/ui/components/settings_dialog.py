@@ -7,10 +7,11 @@ from typing import Dict, Callable
 
 
 class SettingsDialogComponent:
-    def __init__(self, settings_manager, current_user: Dict, on_logout: Callable = None):
+    def __init__(self, settings_manager, current_user: Dict, on_logout: Callable = None, on_settings_updated: Callable = None):
         self.settings_manager = settings_manager
         self.current_user = current_user
         self.on_logout = on_logout
+        self.on_settings_updated = on_settings_updated
         self.current_section = '番茄钟'  # 默认选中的分类
         self.navigation_container = None  # 存储导航容器的引用
 
@@ -232,6 +233,9 @@ class SettingsDialogComponent:
         if success:
             ui.notify('番茄钟设置已保存', type='positive', icon='check')
             app.storage.user['settings_updated'] = True
+            # 通知主页面刷新任务列表
+            if self.on_settings_updated:
+                self.on_settings_updated()
         else:
             ui.notify('保存失败', type='negative', icon='error')
 
