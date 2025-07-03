@@ -170,6 +170,10 @@ class TagManager:
     
     def create_tag(self, user_id: int, name: str, color: str = '#757575') -> Optional[int]:
         """创建标签"""
+        # 验证标签名称长度
+        if len(name) > 15:
+            return None
+        
         query = "INSERT INTO tags (user_id, name, color) VALUES (%s, %s, %s)"
         success = self.db.execute_update(query, (user_id, name, color))
         return self.db.get_last_insert_id() if success else None
@@ -200,6 +204,10 @@ class TagManager:
     
     def get_or_create_tag(self, user_id: int, name: str, color: str = '#757575') -> Optional[int]:
         """获取或创建标签"""
+        # 验证标签名称长度
+        if len(name) > 15:
+            return None
+            
         existing_tag = self.get_tag_by_name(user_id, name)
         if existing_tag:
             return existing_tag['tag_id']
@@ -236,6 +244,9 @@ class TagManager:
         params = []
         
         if name is not None:
+            # 验证标签名称长度
+            if len(name) > 15:
+                return False
             updates.append("name = %s")
             params.append(name)
         

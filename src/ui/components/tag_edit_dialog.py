@@ -33,15 +33,20 @@ class TagEditDialog:
         
         def create_tag():
             """创建新标签"""
-            if not dialog_result['tag_name'].strip():
+            tag_name = dialog_result['tag_name'].strip()
+            if not tag_name:
                 ui.notify('标签名称不能为空', type='warning')
+                return
+            
+            if len(tag_name) > 15:
+                ui.notify('标签名称不能超过15个字符', type='warning')
                 return
             
             try:
                 # 创建新标签
                 new_tag = self.tag_manager.create_tag(
                     user_id=self.user_id,
-                    name=dialog_result['tag_name'].strip(),
+                    name=tag_name,
                     color=dialog_result['tag_color']
                 )
                 
@@ -71,9 +76,9 @@ class TagEditDialog:
             with ui.column().classes('w-full gap-4'):
                 ui.input(
                     label='标签名称', 
-                    placeholder='请输入标签名称',
+                    placeholder='请输入标签名称（最多15字）',
                     on_change=on_name_change
-                ).classes('w-full').props('outlined')
+                ).classes('w-full').props('outlined maxlength=15')
                 
                 # 颜色选择区域
                 self._create_color_picker(dialog_result['tag_color'], on_color_change)
@@ -92,14 +97,19 @@ class TagEditDialog:
         
         def update_tag():
             """更新标签"""
-            if not dialog_result['tag_name'].strip():
+            tag_name = dialog_result['tag_name'].strip()
+            if not tag_name:
                 ui.notify('标签名称不能为空', type='warning')
+                return
+            
+            if len(tag_name) > 15:
+                ui.notify('标签名称不能超过15个字符', type='warning')
                 return
             
             try:
                 success = self.tag_manager.update_tag(
                     tag_id=user_tag['tag_id'],
-                    name=dialog_result['tag_name'].strip(),
+                    name=tag_name,
                     color=dialog_result['tag_color']
                 )
                 
@@ -129,10 +139,10 @@ class TagEditDialog:
             with ui.column().classes('w-full gap-4'):
                 name_input = ui.input(
                     label='标签名称', 
-                    placeholder='请输入标签名称',
+                    placeholder='请输入标签名称（最多15字）',
                     value=dialog_result['tag_name'],
                     on_change=on_name_change
-                ).classes('w-full').props('outlined')
+                ).classes('w-full').props('outlined maxlength=15')
                 
                 # 颜色选择区域
                 self._create_color_picker(dialog_result['tag_color'], on_color_change)

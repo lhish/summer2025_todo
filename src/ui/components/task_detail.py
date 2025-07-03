@@ -133,8 +133,8 @@ class TaskDetailComponent:
                                 
                                 # 添加新标签的输入框
                                 self.new_tag_input = ui.input(
-                                    placeholder='添加标签'
-                                ).classes('flex-shrink-0 w-32').props('dense borderless')
+                                    placeholder='添加标签（最多15字）'
+                                ).classes('flex-shrink-0 w-32').props('dense borderless maxlength=15')
                                 # 添加回车键支持
                                 self.new_tag_input.on('keydown', self.handle_tag_enter_key)
                                 
@@ -490,8 +490,8 @@ class TaskDetailComponent:
                 
                 # 重新创建输入框
                 self.new_tag_input = ui.input(
-                    placeholder='添加标签'
-                ).classes('flex-shrink-0 w-32').props('dense borderless')
+                    placeholder='添加标签（最多15字）'
+                ).classes('flex-shrink-0 w-32').props('dense borderless maxlength=15')
                 # 添加回车键支持
                 self.new_tag_input.on('keydown', self.handle_tag_enter_key)
                 
@@ -508,7 +508,7 @@ class TaskDetailComponent:
             # 重新聚焦到输入框
             ui.run_javascript('''
                 setTimeout(() => {
-                    const input = document.querySelector('input[placeholder="添加标签"]');
+                    const input = document.querySelector('input[placeholder="添加标签（最多15字）"]');
                     if (input) input.focus();
                 }, 100);
             ''')
@@ -519,6 +519,12 @@ class TaskDetailComponent:
             return
         
         tag_name = self.new_tag_input.value.strip()
+        
+        # 检查标签长度
+        if len(tag_name) > 15:
+            ui.notify('标签名称不能超过15个字符', type='warning')
+            return
+        
         current_tags = self.selected_task.get('tags', [])
         
         # 检查标签是否已存在
