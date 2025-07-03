@@ -158,16 +158,13 @@ class TaskListComponent:
                 elif priority == 'low':
                     detail_items.append('🔻 低优先级')
                 
-                # 自定义标签
-                if task.get('tags'):
-                    tag_names = [tag['name'] for tag in task['tags']]
-                    detail_items.append(f"🏷️ {', '.join(tag_names)}")
+                # 自定义标签（移除，改为在详情行中直接显示彩色圆点）
                 
-                # 创建详情显示区域（番茄数和文本在同一行）
+                # 创建详情显示区域（番茄数、标签圆点和文本在同一行）
                 estimated = task.get('estimated_pomodoros', 1)
                 used = task.get('used_pomodoros', 0)
                 
-                if detail_items or estimated:
+                if detail_items or estimated or task.get('tags'):
                     with ui.row().classes('items-center gap-2 text-sm text-grey-6 flex-wrap'):
                         # 番茄数显示（排在最前面）
                         if estimated > 5:
@@ -189,8 +186,23 @@ class TaskListComponent:
                                     # 未使用的番茄（半透明显示）
                                     ui.label('🍅').classes('text-sm leading-none opacity-40').style('filter: grayscale(0.3);')
                         
+                        # 显示标签彩色圆点（在番茄数之后）
+                        if task.get('tags'):
+                            # 添加分隔符（如果有番茄数的话）
+                            if estimated:
+                                ui.label('•').classes('text-sm text-grey-400 leading-none mx-1')
+                            
+                            # 显示每个标签的彩色圆点和名称
+                            for i, tag in enumerate(task['tags']):
+                                tag_color = tag.get('color', '#757575')
+                                ui.element('div').classes('w-3 h-3 rounded-full self-center').style(f'background-color: {tag_color}; min-width: 12px; min-height: 12px;')
+                                ui.label(tag['name']).classes('text-sm leading-none')
+                                # 在标签之间添加分隔符（除了最后一个标签）
+                                if i < len(task['tags']) - 1:
+                                    ui.label('•').classes('text-sm text-grey-400 leading-none mx-1')
+                        
                         # 添加分隔符（如果有其他详情的话）
-                        if detail_items:
+                        if detail_items and (estimated or task.get('tags')):
                             ui.label('•').classes('text-sm text-grey-400 leading-none mx-1')
                         
                         # 显示文本详情（每个项目独立显示）
