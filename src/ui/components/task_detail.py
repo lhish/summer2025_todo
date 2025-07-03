@@ -22,7 +22,8 @@ class TaskDetailComponent:
         self.due_date_input = None
         self.priority_select = None
         self.estimated_pomodoros_input = None
-        self.tags_input = None
+        self.tags_container = None
+        self.new_tag_input = None
         self.reminder_hour_select = None
         self.reminder_minute_select = None
         self.repeat_select = None
@@ -82,15 +83,59 @@ class TaskDetailComponent:
                     # 任务属性编辑区域
                     with ui.column().classes('w-full gap-3 sm:gap-4'):
                         
-                        # +标签
-                        with ui.row().classes('w-full items-center gap-2 sm:gap-3'):
-                            ui.icon('local_offer').classes('text-grey-6 flex-shrink-0')
+                        # 标签编辑区域
+                        with ui.column().classes('w-full gap-2'):
+                            # 标签标题行
+                            with ui.row().classes('w-full items-center gap-2'):
+                                ui.icon('local_offer').classes('text-grey-6 flex-shrink-0')
+                                ui.label('标签').classes('text-sm font-medium')
+                            
+                            # 标签chip显示和编辑区域
                             current_tags = self.selected_task.get('tags', [])
-                            tag_names = [tag['name'] for tag in current_tags] if current_tags else []
-                            self.tags_input = ui.input(
-                                placeholder='添加标签 (用逗号分隔)',
-                                value=', '.join(tag_names)
-                            ).classes('flex-1 min-w-0').props('borderless')
+                            self.tags_container = ui.row().classes('w-full gap-1 flex-wrap items-center')
+                            
+                            with self.tags_container:
+                                # 显示现有标签
+                                for tag in current_tags:
+                                    def edit_tag(tag_data=tag):
+                                        # TODO: 这里应该跳转到标签编辑界面
+                                        # 由于没有直接的回调，先简单显示提示
+                                        ui.notify(f'编辑标签: {tag_data["name"]}', type='info')
+                                    
+                                    def remove_tag(tag_data=tag):
+                                        # 从任务中移除标签
+                                        updated_tags = [t for t in current_tags if t['tag_id'] != tag_data['tag_id']]
+                                        tag_names = [t['name'] for t in updated_tags]
+                                        # 更新任务标签
+                                        if self.task_manager.update_task(
+                                            task_id=self.selected_task['task_id'],
+                                            tags=tag_names
+                                        ):
+                                            self.selected_task['tags'] = updated_tags
+                                            self.refresh_tags_display()
+                                            ui.notify(f'已移除标签: {tag_data["name"]}', type='positive')
+                                        else:
+                                            ui.notify('移除标签失败', type='negative')
+                                    
+                                    ui.chip(
+                                        text=tag['name'], 
+                                        icon='label', 
+                                        color=tag.get('color', '#757575'),
+                                        removable=True,
+                                        on_click=lambda t=tag: edit_tag(t)
+                                    ).on('remove', lambda t=tag: remove_tag(t))
+                                
+                                # 添加新标签的输入框
+                                self.new_tag_input = ui.input(
+                                    placeholder='添加标签',
+                                    on_change=self.on_new_tag_input_change
+                                ).classes('flex-shrink-0 w-32').props('dense borderless')
+                                
+                                # 添加按钮
+                                ui.button(
+                                    icon='add',
+                                    on_click=self.add_new_tag
+                                ).props('round dense flat color=primary size=sm')
                         
                         # 番茄数
                         with ui.row().classes('w-full items-center gap-2 sm:gap-3'):
@@ -119,11 +164,7 @@ class TaskDetailComponent:
                                 value=due_date_value or ''
                             ).props('type=date borderless').classes('flex-1 min-w-0')
                         
-                        # 清单
-                        with ui.row().classes('w-full items-center gap-2 sm:gap-3'):
-                            ui.icon('list').classes('text-grey-6 flex-shrink-0')
-                            list_name = self.selected_task.get('list_name', '无')
-                            ui.label(f'清单: {list_name}').classes('text-grey-8 text-sm sm:text-base')
+
                         
                         # 提醒时间（时间选择器）
                         with ui.row().classes('w-full items-center gap-2 sm:gap-3'):
@@ -381,7 +422,8 @@ class TaskDetailComponent:
             priority = self.priority_select.value if self.priority_select else 'medium'
             repeat_cycle = self.repeat_select.value if self.repeat_select else 'none'
             estimated_pomodoros = int(self.estimated_pomodoros_input.value)
-            tags_str = self.tags_input.value.strip() if self.tags_input.value else ''
+            # 标签现在由chip组件管理，不需要从input获取
+            tags_str = ''
             
             # 组合提醒时间
             reminder_time = None
@@ -608,7 +650,7 @@ class TaskDetailComponent:
         # 检查必要的组件是否存在
         if not all([
             self.title_input, self.description_input, self.due_date_input,
-            self.estimated_pomodoros_input, self.tags_input
+            self.estimated_pomodoros_input
         ]):
             return False
         
@@ -652,11 +694,9 @@ class TaskDetailComponent:
             except:
                 estimated_pomodoros = 1
             
-            # 处理标签
-            tags_str = self.tags_input.value.strip() if self.tags_input.value else ''
-            tags = []
-            if tags_str:
-                tags = [tag.strip() for tag in tags_str.split(',') if tag.strip()]
+            # 标签现在由chip组件管理，直接从selected_task获取
+            current_tags = self.selected_task.get('tags', [])
+            tags = [tag['name'] for tag in current_tags]
             
             # 处理提醒时间
             current_reminder = None
@@ -714,6 +754,83 @@ class TaskDetailComponent:
             # 如果检查过程中出现错误，为了安全起见认为没有更改
             print(f"Error in has_unsaved_changes: {e}")
             return False
+
+    def refresh_tags_display(self):
+        """刷新标签显示"""
+        if self.tags_container and self.selected_task:
+            self.tags_container.clear()
+            current_tags = self.selected_task.get('tags', [])
+            
+            with self.tags_container:
+                # 显示现有标签
+                for tag in current_tags:
+                    def edit_tag(tag_data=tag):
+                        ui.notify(f'编辑标签: {tag_data["name"]}', type='info')
+                    
+                    def remove_tag(tag_data=tag):
+                        updated_tags = [t for t in current_tags if t['tag_id'] != tag_data['tag_id']]
+                        tag_names = [t['name'] for t in updated_tags]
+                        if self.task_manager.update_task(
+                            task_id=self.selected_task['task_id'],
+                            tags=tag_names
+                        ):
+                            self.selected_task['tags'] = updated_tags
+                            self.refresh_tags_display()
+                            ui.notify(f'已移除标签: {tag_data["name"]}', type='positive')
+                        else:
+                            ui.notify('移除标签失败', type='negative')
+                    
+                    ui.chip(
+                        text=tag['name'], 
+                        icon='label', 
+                        color=tag.get('color', '#757575'),
+                        removable=True,
+                        on_click=lambda t=tag: edit_tag(t)
+                    ).on('remove', lambda t=tag: remove_tag(t))
+                
+                # 重新创建输入框
+                self.new_tag_input = ui.input(
+                    placeholder='添加标签',
+                    on_change=self.on_new_tag_input_change
+                ).classes('flex-shrink-0 w-32').props('dense borderless')
+                
+                ui.button(
+                    icon='add',
+                    on_click=self.add_new_tag
+                ).props('round dense flat color=primary size=sm')
+    
+    def on_new_tag_input_change(self, event):
+        """处理新标签输入变化"""
+        # 检查是否按下回车键
+        pass
+    
+    def add_new_tag(self):
+        """添加新标签"""
+        if not self.new_tag_input or not self.new_tag_input.value.strip():
+            return
+        
+        tag_name = self.new_tag_input.value.strip()
+        current_tags = self.selected_task.get('tags', [])
+        
+        # 检查标签是否已存在
+        if any(tag['name'] == tag_name for tag in current_tags):
+            ui.notify(f'标签 "{tag_name}" 已存在', type='warning')
+            return
+        
+        # 添加标签到任务
+        tag_names = [tag['name'] for tag in current_tags] + [tag_name]
+        if self.task_manager.update_task(
+            task_id=self.selected_task['task_id'],
+            tags=tag_names
+        ):
+            # 重新获取任务数据以获取更新后的标签信息
+            updated_task = self.task_manager.get_task_by_id(self.selected_task['task_id'])
+            if updated_task:
+                self.selected_task = updated_task
+                self.refresh_tags_display()
+                ui.notify(f'已添加标签: {tag_name}', type='positive')
+        else:
+            ui.notify('添加标签失败', type='negative')
 
     def close_with_unsaved_check(self):
         """关闭前检查是否有未保存的更改"""

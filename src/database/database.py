@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 数据库管理模块
-处理数据库连接、用户管理、清单管理、标签管理等基础操作
+处理数据库连接、用户管理、标签管理等基础操作
 """
 
 import mysql.connector
@@ -160,60 +160,7 @@ class UserManager:
         )
         return self.db.execute_update(query, params)
 
-class ListManager:
-    """清单管理类"""
-    
-    def __init__(self, db_manager: DatabaseManager):
-        self.db = db_manager
-    
-    def create_list(self, user_id: int, name: str, color: str = '#2196F3') -> Optional[int]:
-        """创建清单"""
-        query = "INSERT INTO lists (user_id, name, color) VALUES (%s, %s, %s)"
-        success = self.db.execute_update(query, (user_id, name, color))
-        return self.db.get_last_insert_id() if success else None
-    
-    def get_user_lists(self, user_id: int) -> List[Dict]:
-        """获取用户的所有清单"""
-        query = """
-        SELECT l.*, COUNT(t.task_id) as task_count 
-        FROM lists l 
-        LEFT JOIN tasks t ON l.list_id = t.list_id AND t.status = 'pending'
-        WHERE l.user_id = %s 
-        GROUP BY l.list_id
-        ORDER BY l.created_at
-        """
-        return self.db.execute_query(query, (user_id,))
-    
-    def get_list_by_id(self, list_id: int) -> Optional[Dict]:
-        """根据ID获取清单"""
-        query = "SELECT * FROM lists WHERE list_id = %s"
-        results = self.db.execute_query(query, (list_id,))
-        return results[0] if results else None
-    
-    def update_list(self, list_id: int, name: str = None, color: str = None) -> bool:
-        """更新清单"""
-        updates = []
-        params = []
-        
-        if name is not None:
-            updates.append("name = %s")
-            params.append(name)
-        
-        if color is not None:
-            updates.append("color = %s")
-            params.append(color)
-        
-        if not updates:
-            return True
-        
-        params.append(list_id)
-        query = f"UPDATE lists SET {', '.join(updates)} WHERE list_id = %s"
-        return self.db.execute_update(query, tuple(params))
-    
-    def delete_list(self, list_id: int) -> bool:
-        """删除清单"""
-        query = "DELETE FROM lists WHERE list_id = %s"
-        return self.db.execute_update(query, (list_id,))
+# ListManager 类已删除 - 功能已整合到 TagManager
 
 class TagManager:
     """标签管理类"""
@@ -230,6 +177,19 @@ class TagManager:
     def get_user_tags(self, user_id: int) -> List[Dict]:
         """获取用户的所有标签"""
         query = "SELECT * FROM tags WHERE user_id = %s ORDER BY name"
+        return self.db.execute_query(query, (user_id,))
+    
+    def get_user_tags_with_count(self, user_id: int) -> List[Dict]:
+        """获取用户的所有标签（包含任务数量）"""
+        query = """
+        SELECT t.*, COUNT(tt.task_id) as task_count 
+        FROM tags t 
+        LEFT JOIN task_tags tt ON t.tag_id = tt.tag_id 
+        LEFT JOIN tasks ts ON tt.task_id = ts.task_id AND ts.status = 'pending'
+        WHERE t.user_id = %s 
+        GROUP BY t.tag_id
+        ORDER BY t.name
+        """
         return self.db.execute_query(query, (user_id,))
     
     def get_tag_by_name(self, user_id: int, name: str) -> Optional[Dict]:
@@ -293,4 +253,21 @@ class TagManager:
     def delete_tag(self, tag_id: int) -> bool:
         """删除标签"""
         query = "DELETE FROM tags WHERE tag_id = %s"
+        return self.db.execute_update(query, (tag_id,))
+    
+    def get_tag_by_id(self, tag_id: int) -> Optional[Dict]:
+        """根据ID获取标签"""
+        query = "SELECT * FROM tags WHERE tag_id = %s"
+        results = self.db.execute_query(query, (tag_id,))
+        return results[0] if results else None
+    
+    def complete_tag_tasks(self, tag_id: int) -> bool:
+        """完成标签下的所有任务"""
+        query = """
+        UPDATE tasks 
+        SET status = 'completed' 
+        WHERE task_id IN (
+            SELECT task_id FROM task_tags WHERE tag_id = %s
+        ) AND status = 'pending'
+        """
         return self.db.execute_update(query, (tag_id,)) 
