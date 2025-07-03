@@ -43,10 +43,10 @@ class TaskDetailComponent:
         
         container.clear()
         
-        with container:
-            # 使用响应式设计的主容器，添加滚动支持
+        with container.classes('relative h-full'):
+            # 主内容区（可滚动）
             with ui.scroll_area().classes('h-full').style('height: calc(100vh - 60px);'):
-                with ui.column().classes('w-full min-w-80 max-w-md p-4 mx-auto').style('min-height: 100%;'):
+                with ui.column().classes('w-full min-w-80 max-w-md p-4 mx-auto').style('min-height: 100%; padding-bottom: 80px;'):
                     # 任务标题（可编辑）和操作按钮
                     with ui.row().classes('w-full items-center gap-2 mb-4'):
                         # 完成按钮
@@ -145,26 +145,27 @@ class TaskDetailComponent:
                                 ).props('round dense flat color=primary size=sm')
                         
                         # 番茄数
-                        with ui.row().classes('w-full items-center gap-2 sm:gap-3'):
-                            ui.icon('timer').classes('text-grey-6 flex-shrink-0')
-                            ui.label('预估番茄钟:').classes('min-w-fit text-sm sm:text-base')
+                        with ui.row().classes('w-full items-center gap-1 sm:gap-2'):
+                            ui.icon('timer').classes('text-grey-6 flex-shrink-0 text-sm')
+                            ui.label('预估番茄钟:').classes('min-w-fit text-xs sm:text-sm')
                             self.estimated_pomodoros_input = ui.number(
                                 value=self.selected_task.get('estimated_pomodoros', 1),
                                 min=1,
                                 max=20
-                            ).classes('w-16 sm:w-20').props('borderless dense')
+                            ).classes('w-12 sm:w-16').props('borderless dense')
                             # 添加失去焦点时自动保存
                             self.estimated_pomodoros_input.on('blur', lambda: self.auto_save_field('estimated_pomodoros'))
-                            ui.label('个').classes('text-sm sm:text-base')
+                            ui.label('个').classes('text-xs sm:text-sm')
                             
                             # 显示已使用数量
                             used_pomodoros = self.selected_task.get('used_pomodoros', 0)
                             if used_pomodoros > 0:
-                                ui.label(f'(已用 {used_pomodoros} 个)').classes('text-xs sm:text-sm text-grey-6')
+                                ui.label(f'(已完成 {used_pomodoros} 个)').classes('text-xs text-grey-6')
                         
                         # 到期日
                         with ui.row().classes('w-full items-center gap-2 sm:gap-3'):
                             ui.icon('event').classes('text-grey-6 flex-shrink-0')
+                            ui.label('截止日期:').classes('min-w-fit text-xs sm:text-sm')
                             due_date_value = self.selected_task.get('due_date')
                             if due_date_value and isinstance(due_date_value, str):
                                 due_date_value = due_date_value.split()[0]
@@ -235,37 +236,20 @@ class TaskDetailComponent:
                     
                     # 底部区域
                     ui.space().classes('flex-grow min-h-4')
-                    
-                    # 进度显示
-                    estimated = self.selected_task.get('estimated_pomodoros', 1)
-                    used = self.selected_task.get('used_pomodoros', 0)
-                    if used > 0:
-                        progress = (used / estimated * 100) if estimated > 0 else 0
-                        progress_value = progress / 100
-                        with ui.row().classes('w-full items-center mb-4 p-3 bg-grey-1 rounded'):
-                            ui.icon('trending_up').classes('text-primary flex-shrink-0')
-                            ui.label(f'进度: {used}/{estimated} 番茄钟').classes('text-xs sm:text-sm flex-shrink-0')
-                            with ui.linear_progress(value=progress_value, color='primary', show_value=False, size='1.5em').classes('flex-1 mx-2 sm:mx-3').props('instant-feedback'):
-                                ui.label(f'{progress:.2f}%').classes('text-xs text-black absolute-center font-medium')
-                    
+                                        
                     # 分隔线
                     ui.separator().classes('my-4')
                     
-                    # 底部操作区
-                    with ui.column().classes('w-full gap-3'):
-                        # 操作按钮区域
-                        with ui.row().classes('w-full justify-between items-center'):
-                            # 关闭和重置按钮
-                            with ui.row().classes('gap-2'):
-                                ui.button('关闭', icon='close', on_click=self.close_task_detail).props('flat color=grey size=sm').tooltip('关闭详情面板')
-                                ui.button('重置', icon='refresh', on_click=self.reset_form).props('flat color=grey size=sm').tooltip('重置到初始状态')
-                        
-                        # 创建日期
-                        with ui.row().classes('w-full justify-center mt-2'):
-                            created_at = self.selected_task.get('created_at', '未知')
-                            if isinstance(created_at, str) and len(created_at) > 10:
-                                created_at = created_at[:10]  # 只显示日期部分
-                            ui.label(f'创建于 {created_at}').classes('text-xs text-grey-6')
+                    # 创建日期
+                    with ui.row().classes('w-full justify-center mt-2'):
+                        created_at = self.selected_task.get('created_at', '未知')
+                        if isinstance(created_at, str) and len(created_at) > 10:
+                            created_at = created_at[:10]  # 只显示日期部分
+                        ui.label(f'创建于 {created_at}').classes('text-xs text-grey-6')
+            # 详情栏底部按钮条（绝对定位，靠左，无背景无阴影）
+            with ui.row().classes('absolute left-0 bottom-0 w-full p-3 z-10 justify-start mb-4'):
+                ui.button('关闭', icon='close', on_click=self.close_task_detail).props('flat color=grey size=md').tooltip('关闭详情面板')
+                ui.button('重置', icon='refresh', on_click=self.reset_form).props('flat color=grey size=md').tooltip('重置到初始状态')
 
     def close_task_detail(self):
         """关闭任务详情面板"""
