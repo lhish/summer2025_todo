@@ -13,16 +13,6 @@ CREATE TABLE users (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
--- 清单表
-CREATE TABLE lists (
-    list_id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT NOT NULL,
-    name VARCHAR(255) NOT NULL,
-    color VARCHAR(7) DEFAULT '#2196F3',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
-);
-
 -- 标签表
 CREATE TABLE tags (
     tag_id INT AUTO_INCREMENT PRIMARY KEY,
@@ -34,11 +24,10 @@ CREATE TABLE tags (
     FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
 );
 
--- 任务表
+-- 任务表 (移除list_id字段)
 CREATE TABLE tasks (
     task_id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
-    list_id INT,
     title VARCHAR(255) NOT NULL,
     description TEXT,
     due_date DATE,
@@ -50,8 +39,7 @@ CREATE TABLE tasks (
     used_pomodoros INT DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
-    FOREIGN KEY (list_id) REFERENCES lists(list_id) ON DELETE SET NULL
+    FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
 );
 
 -- 任务标签关联表
@@ -91,12 +79,15 @@ CREATE TABLE focus_sessions (
     FOREIGN KEY (task_id) REFERENCES tasks(task_id) ON DELETE SET NULL
 );
 
--- 插入默认数据
--- 为每个用户创建默认清单的触发器
+-- 为每个用户创建默认标签的触发器
 DELIMITER //
-CREATE TRIGGER create_default_list AFTER INSERT ON users
+CREATE TRIGGER create_default_tags AFTER INSERT ON users
 FOR EACH ROW
 BEGIN
-    INSERT INTO lists (user_id, name, color) VALUES (NEW.user_id, '默认清单', '#2196F3');
+    INSERT INTO tags (user_id, name, color) VALUES 
+    (NEW.user_id, '工作', '#2196F3'),
+    (NEW.user_id, '学习', '#4CAF50'),
+    (NEW.user_id, '生活', '#FF9800'),
+    (NEW.user_id, '重要', '#F44336');
 END//
 DELIMITER ; 

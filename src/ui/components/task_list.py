@@ -55,21 +55,25 @@ class TaskListComponent:
         # 根据当前视图设置默认属性
         due_date = None
         priority = 'medium'
-        list_id = None
+        tags = []
         
         if self.current_view == 'my_day' or self.current_view == 'planned':
             due_date = date.today()
         elif self.current_view == 'important':
             priority = 'high'
-        elif self.current_view.startswith('list_'):
-            list_id = int(self.current_view.split('_')[1])
+        elif self.current_view.startswith('tag_'):
+            # 如果是标签视图，获取标签名并添加到任务
+            tag_id = int(self.current_view.split('_')[1])
+            # 这里需要获取标签名称，但由于我们没有tag_manager的引用，
+            # 我们先跳过这部分，或者需要在构造函数中传入tag_manager
+            pass
         
         task_id = self.task_manager.create_task(
             user_id=self.current_user['user_id'],
             title=title,
             due_date=due_date,
             priority=priority,
-            list_id=list_id
+            tags=tags
         )
         
         if task_id:
@@ -163,7 +167,7 @@ class TaskListComponent:
                 estimated = task.get('estimated_pomodoros', 1)
                 used = task.get('used_pomodoros', 0)
                 
-                if detail_items or task['list_name'] or estimated:
+                if detail_items or estimated:
                     with ui.row().classes('items-center gap-2 text-sm text-grey-6 flex-wrap'):
                         # 番茄数显示（排在最前面）
                         if estimated > 5:
@@ -186,21 +190,15 @@ class TaskListComponent:
                                     ui.label('🍅').classes('text-sm leading-none opacity-40').style('filter: grayscale(0.3);')
                         
                         # 添加分隔符（如果有其他详情的话）
-                        if detail_items or task['list_name']:
+                        if detail_items:
                             ui.label('•').classes('text-sm text-grey-400 leading-none mx-1')
                         
                         # 显示文本详情（每个项目独立显示）
                         for i, item in enumerate(detail_items):
                             ui.label(item).classes('text-sm leading-none')
                             # 在项目之间添加分隔符（除了最后一个项目）
-                            if i < len(detail_items) - 1 or task['list_name']:
+                            if i < len(detail_items) - 1:
                                 ui.label('•').classes('text-sm text-grey-400 leading-none mx-1')
-                        
-                        # 显示清单（彩色圆点）
-                        if task['list_name']:
-                            list_color = task.get('list_color', '#2196F3')
-                            ui.element('div').classes('w-3 h-3 rounded-full self-center').style(f'background-color: {list_color}; min-width: 12px; min-height: 12px;')
-                            ui.label(task['list_name']).classes('text-sm leading-none')
 
     def create_completed_tasks_section(self, container):
         """创建已完成任务区域（卡片式）"""

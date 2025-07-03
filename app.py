@@ -9,7 +9,7 @@ from nicegui import ui, app
 
 # 导入自定义模块
 from config import APP_CONFIG
-from src.database.database import DatabaseManager, UserManager, ListManager, TagManager
+from src.database.database import DatabaseManager, UserManager, TagManager
 from src.services.task_manager import TaskManager
 from src.services.pomodoro_manager import PomodoroManager, UserSettingsManager
 from src.services.ai_assistant import AIAssistant
@@ -28,7 +28,6 @@ logger = logging.getLogger(__name__)
 # 初始化数据库和服务
 db_manager = DatabaseManager()
 user_manager = UserManager(db_manager)
-list_manager = ListManager(db_manager)
 tag_manager = TagManager(db_manager)
 task_manager = TaskManager(db_manager)
 pomodoro_manager = PomodoroManager(db_manager)
@@ -40,7 +39,7 @@ statistics_manager = StatisticsManager(db_manager)
 login_page = LoginPage(user_manager)
 register_page = RegisterPage(user_manager)
 main_page = MainPage(
-    db_manager, user_manager, list_manager, tag_manager, task_manager,
+    db_manager, user_manager, tag_manager, task_manager,
     pomodoro_manager, settings_manager, ai_assistant, statistics_manager
 )
 settings_page = SettingsPage(settings_manager)

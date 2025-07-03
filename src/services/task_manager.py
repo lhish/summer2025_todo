@@ -26,7 +26,6 @@ class TaskManager:
                    due_date: date = None,
                    priority: str = 'medium',
                    estimated_pomodoros: int = 1,
-                   list_id: int = None,
                    repeat_cycle: str = 'none',
                    reminder_time: str = None,
                    tags: List[str] = None) -> Optional[int]:
@@ -40,7 +39,6 @@ class TaskManager:
             due_date: 截止日期（只包含日期，不包含时间）
             priority: 优先级 (high, medium, low)
             estimated_pomodoros: 预估番茄钟数量
-            list_id: 清单ID
             repeat_cycle: 重复周期 (none, daily, weekly, monthly)
             reminder_time: 提醒时间 (HH:MM格式)
             tags: 标签列表
@@ -51,11 +49,11 @@ class TaskManager:
         try:
             # 创建任务
             query = """
-            INSERT INTO tasks (user_id, list_id, title, description, due_date, priority, estimated_pomodoros, repeat_cycle, reminder_time)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+            INSERT INTO tasks (user_id, title, description, due_date, priority, estimated_pomodoros, repeat_cycle, reminder_time)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
             """
             
-            params = (user_id, list_id, title, description, due_date, priority, estimated_pomodoros, repeat_cycle, reminder_time)
+            params = (user_id, title, description, due_date, priority, estimated_pomodoros, repeat_cycle, reminder_time)
             
             if self.db.execute_update(query, params):
                 task_id = self.db.get_last_insert_id()
@@ -77,7 +75,7 @@ class TaskManager:
                   user_id: int,
                   status: str = None,
                   priority: str = None,
-                  list_id: int = None,
+                  tag_id: int = None,
                   due_date_filter: str = None,
                   search_query: str = None,
                   sort_by: str = 'created_at',
@@ -90,7 +88,7 @@ class TaskManager:
             user_id: 用户ID
             status: 状态过滤 (pending, completed)
             priority: 优先级过滤 (high, medium, low)
-            list_id: 清单ID过滤
+            tag_id: 标签ID过滤
             due_date_filter: 截止日期过滤 (today, overdue, this_week, no_date)
             search_query: 搜索关键词
             sort_by: 排序字段
@@ -103,9 +101,8 @@ class TaskManager:
         try:
             # 构建基础查询
             query = """
-            SELECT t.*, l.name as list_name, l.color as list_color
+            SELECT t.*
             FROM tasks t
-            LEFT JOIN lists l ON t.list_id = l.list_id
             WHERE t.user_id = %s
             """
             
@@ -120,9 +117,9 @@ class TaskManager:
                 query += " AND t.priority = %s"
                 params.append(priority)
                 
-            if list_id:
-                query += " AND t.list_id = %s"
-                params.append(list_id)
+            if tag_id:
+                query += " AND t.task_id IN (SELECT task_id FROM task_tags WHERE tag_id = %s)"
+                params.append(tag_id)
             
             # 截止日期过滤
             if due_date_filter:
@@ -199,9 +196,8 @@ class TaskManager:
         elif view_type == 'planned':
             # 计划内：有截止日期的任务
             query = """
-            SELECT t.*, l.name as list_name, l.color as list_color
+            SELECT t.*
             FROM tasks t
-            LEFT JOIN lists l ON t.list_id = l.list_id
             WHERE t.user_id = %s AND t.due_date IS NOT NULL
             ORDER BY t.due_date ASC
             """
@@ -238,9 +234,8 @@ class TaskManager:
         """根据ID获取任务详情"""
         try:
             query = """
-            SELECT t.*, l.name as list_name, l.color as list_color
+            SELECT t.*
             FROM tasks t
-            LEFT JOIN lists l ON t.list_id = l.list_id
             WHERE t.task_id = %s
             """
             
@@ -263,7 +258,6 @@ class TaskManager:
                    due_date: date = None,
                    priority: str = None,
                    estimated_pomodoros: int = None,
-                   list_id: int = None,
                    repeat_cycle: str = None,
                    reminder_time: str = None,
                    tags: List[str] = None) -> bool:
@@ -277,7 +271,6 @@ class TaskManager:
             due_date: 截止日期
             priority: 优先级
             estimated_pomodoros: 预估番茄钟数量
-            list_id: 清单ID
             repeat_cycle: 重复周期 (none, daily, weekly, monthly)
             reminder_time: 提醒时间 (HH:MM格式)
             tags: 标签列表
@@ -310,9 +303,7 @@ class TaskManager:
                 updates.append("estimated_pomodoros = %s")
                 params.append(estimated_pomodoros)
             
-            if list_id is not None:
-                updates.append("list_id = %s")
-                params.append(list_id)
+# list_id 参数已移除
             
             if repeat_cycle is not None:
                 updates.append("repeat_cycle = %s")
@@ -400,43 +391,7 @@ class TaskManager:
             logger.error(f"更新番茄钟数量失败: {e}")
             return False
     
-    def complete_list_tasks(self, list_id: int) -> bool:
-        """将清单中所有任务标记为完成"""
-        try:
-            query = """
-            UPDATE tasks 
-            SET status = 'completed', updated_at = CURRENT_TIMESTAMP
-            WHERE list_id = %s AND status = 'pending'
-            """
-            success = self.db.execute_update(query, (list_id,))
-            
-            if success:
-                logger.info(f"清单 {list_id} 中的任务已全部标记为完成")
-            
-            return success
-            
-        except Exception as e:
-            logger.error(f"批量完成清单任务失败: {e}")
-            return False
-    
-    def unlink_list_tasks(self, list_id: int) -> bool:
-        """解除清单中所有任务的清单绑定"""
-        try:
-            query = """
-            UPDATE tasks 
-            SET list_id = NULL, updated_at = CURRENT_TIMESTAMP
-            WHERE list_id = %s
-            """
-            success = self.db.execute_update(query, (list_id,))
-            
-            if success:
-                logger.info(f"清单 {list_id} 中的任务已解除绑定")
-            
-            return success
-            
-        except Exception as e:
-            logger.error(f"解除清单任务绑定失败: {e}")
-            return False
+# complete_list_tasks 和 unlink_list_tasks 方法已移除 - 标签功能由 TagManager 提供
     
     def get_task_summary_stats(self, user_id: int) -> Dict[str, Any]:
         """获取任务统计摘要"""

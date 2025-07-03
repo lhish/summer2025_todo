@@ -15,11 +15,10 @@ from ..components.main_content import MainContentComponent
 
 
 class MainPage:
-    def __init__(self, db_manager, user_manager, list_manager, tag_manager, task_manager, 
+    def __init__(self, db_manager, user_manager, tag_manager, task_manager, 
                  pomodoro_manager, settings_manager, ai_assistant, statistics_manager):
         self.db_manager = db_manager
         self.user_manager = user_manager
-        self.list_manager = list_manager
         self.tag_manager = tag_manager
         self.task_manager = task_manager
         self.pomodoro_manager = pomodoro_manager
@@ -31,7 +30,7 @@ class MainPage:
         self.current_user: Optional[Dict] = None
         self.current_view = 'my_day'
         self.current_tasks: List[Dict] = []
-        self.user_lists: List[Dict] = []
+        self.user_tags: List[Dict] = []
         self.task_detail_open = False
         self.selected_task: Optional[Dict] = None
         
@@ -113,13 +112,13 @@ class MainPage:
     def load_user_data(self):
         """加载用户数据"""
         if self.current_user:
-            self.user_lists = self.list_manager.get_user_lists(self.current_user['user_id'])
+            self.user_tags = self.tag_manager.get_user_tags_with_count(self.current_user['user_id'])
 
     def init_components(self):
         """初始化组件"""
         # 侧边栏组件
         self.sidebar_component = SidebarComponent(
-            self.list_manager, 
+            self.tag_manager, 
             self.task_manager,
             self.current_user, 
             self.on_view_change,
@@ -172,18 +171,18 @@ class MainPage:
         # 主内容组件
         self.main_content_component = MainContentComponent(
             self.current_user,
-            self.user_lists
+            self.user_tags
         )
 
     def refresh_current_tasks(self):
         """刷新当前任务列表"""
         if self.current_user:
-            if self.current_view.startswith('list_'):
-                # 清单视图
-                list_id = int(self.current_view.split('_')[1])
+            if self.current_view.startswith('tag_'):
+                # 标签视图
+                tag_id = int(self.current_view.split('_')[1])
                 self.current_tasks = self.task_manager.get_tasks(
                     user_id=self.current_user['user_id'],
-                    list_id=list_id,
+                    tag_id=tag_id,
                     sort_by='created_at',
                     sort_order='DESC'
                 )
@@ -200,7 +199,7 @@ class MainPage:
         """视图切换回调"""
         self.current_view = view_type
         
-        # 先更新用户数据（包括清单信息）
+        # 先更新用户数据（包括标签信息）
         self.load_user_data()
         
         # 刷新任务数据
@@ -208,8 +207,8 @@ class MainPage:
         
         # 更新主内容区域
         if self.main_content_component and self.main_content_container:
-            # 确保主内容组件有最新的清单数据
-            self.main_content_component.update_user_lists(self.user_lists)
+            # 确保主内容组件有最新的标签数据
+            self.main_content_component.update_user_tags(self.user_tags)
             self.main_content_component.create_main_content(
                 self.main_content_container,
                 self.current_view,
@@ -272,11 +271,11 @@ class MainPage:
         
         # 更新侧边栏
         if self.sidebar_component:
-            self.sidebar_component.refresh_user_lists()
+            self.sidebar_component.refresh_user_tags()
         
         # 更新主内容区域
         if self.main_content_component and self.main_content_container:
-            self.main_content_component.update_user_lists(self.user_lists)
+            self.main_content_component.update_user_tags(self.user_tags)
             self.main_content_component.create_main_content(
                 self.main_content_container,
                 self.current_view,
@@ -349,25 +348,25 @@ class MainPage:
                 border-right: 3px solid #2196f3;
             }
             
-            /* 清单项样式 */
-            .list-item-container {
+            /* 标签项样式 */
+            .tag-item-container {
                 transition: all 0.2s ease;
                 border-right: 3px solid transparent;
             }
-            .list-item-container:hover {
+            .tag-item-container:hover {
                 background: #f0f8ff;
             }
-            .list-item-container.active {
+            .tag-item-container.active {
                 background: #e3f2fd;
                 border-right: 3px solid #2196f3;
             }
             
             /* 菜单按钮样式 */
-            .list-menu-button {
+            .tag-menu-button {
                 opacity: 0;
                 transition: opacity 0.2s ease;
             }
-            .list-item-container:hover .list-menu-button {
+            .tag-item-container:hover .tag-menu-button {
                 opacity: 1;
             }
 

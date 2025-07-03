@@ -7,9 +7,9 @@ from typing import Dict, List, Callable
 
 
 class MainContentComponent:
-    def __init__(self, current_user: Dict, user_lists: List[Dict]):
+    def __init__(self, current_user: Dict, user_tags: List[Dict]):
         self.current_user = current_user
-        self.user_lists = user_lists
+        self.user_tags = user_tags
         self.current_view = 'my_day'
 
     def create_main_content(self, container, current_view: str, task_list_component):
@@ -23,12 +23,12 @@ class MainContentComponent:
                 # 页面标题
                 title = '任务'  # 默认标题
                 
-                if current_view.startswith('list_'):
-                    # 清单视图：显示清单名称
-                    list_id = int(current_view.split('_')[1])
-                    for user_list in self.user_lists:
-                        if user_list['list_id'] == list_id:
-                            title = user_list['name']
+                if current_view.startswith('tag_'):
+                    # 标签视图：显示标签名称
+                    tag_id = int(current_view.split('_')[1])
+                    for user_tag in self.user_tags:
+                        if user_tag['tag_id'] == tag_id:
+                            title = user_tag['name']
                             break
                 else:
                     # 默认视图
@@ -58,6 +58,6 @@ class MainContentComponent:
                 completed_tasks_container = ui.column().classes('w-full')
                 task_list_component.create_completed_tasks_section(completed_tasks_container)
 
-    def update_user_lists(self, user_lists: List[Dict]):
-        """更新用户清单"""
-        self.user_lists = user_lists 
+    def update_user_tags(self, user_tags: List[Dict]):
+        """更新用户标签"""
+        self.user_tags = user_tags 

@@ -7,9 +7,9 @@ from typing import Dict, List, Callable, Optional
 
 
 class SidebarComponent:
-    def __init__(self, list_manager, task_manager, current_user: Dict, on_view_change: Callable, on_logout: Callable, 
+    def __init__(self, tag_manager, task_manager, current_user: Dict, on_view_change: Callable, on_logout: Callable, 
                  on_settings: Callable, on_statistics: Callable = None, on_refresh_ui: Callable = None):
-        self.list_manager = list_manager
+        self.tag_manager = tag_manager
         self.task_manager = task_manager
         self.current_user = current_user
         self.on_view_change = on_view_change
@@ -19,12 +19,13 @@ class SidebarComponent:
         self.on_refresh_ui = on_refresh_ui
         self.sidebar_collapsed = True
         self.current_view = 'my_day'
-        self.user_lists: List[Dict] = []
+        self.user_tags: List[Dict] = []
         self.sidebar_container = None
-        self.sidebar_lists_container = None
+        self.sidebar_tags_container = None
+        self.tags_expanded = False  # 标签展开状态
         
-        # 加载用户清单
-        self.refresh_user_lists()
+        # 加载用户标签
+        self.refresh_user_tags()
 
     def create_sidebar(self, container):
         """创建左侧边栏"""
@@ -50,9 +51,9 @@ class SidebarComponent:
             
             ui.separator()
             
-            # 第二部分：清单
-            self.sidebar_lists_container = ui.column().classes('w-full p-2')
-            self.refresh_sidebar_lists()
+            # 第二部分：标签
+            self.sidebar_tags_container = ui.column().classes('w-full p-2')
+            self.refresh_sidebar_tags()
             
             ui.separator()
 
@@ -75,14 +76,14 @@ class SidebarComponent:
                     if self.sidebar_collapsed:
                         # 收起时：竖直排列居中
                         with ui.column().classes('w-full items-center gap-3'):
-                            ui.button(icon='add', on_click=self.show_create_list_dialog).props('flat round size=sm')
+                            ui.button(icon='add', on_click=self.show_create_tag_dialog).props('flat round size=sm')
                             ui.button(icon='analytics', on_click=self.on_statistics).props('flat round size=sm')
                             ui.button(icon='settings', on_click=self.on_settings).props('flat round size=sm')
                             ui.button(icon='logout', on_click=self.on_logout).props('flat round size=sm')
                     else:
-                        # 展开时：新建清单按钮靠左，其他按钮靠右
+                        # 展开时：新建标签按钮靠左，其他按钮靠右
                         with ui.row().classes('w-full justify-between items-center gap-2'):
-                            ui.button('新建清单', icon='add', on_click=self.show_create_list_dialog).props('flat').classes('text-sm font-medium')
+                            ui.button('新建标签', icon='add', on_click=self.show_create_tag_dialog).props('flat').classes('text-sm font-medium')
                             
                             with ui.row().classes('gap-2'):
                                 ui.button(icon='analytics', on_click=self.on_statistics).props('flat round size=sm')
@@ -111,53 +112,86 @@ class SidebarComponent:
             if not self.sidebar_collapsed:
                 ui.label(label).classes('text-sm')
 
-    def refresh_sidebar_lists(self):
-        """刷新侧边栏清单列表"""
-        # 清空列表容器内容
-        if self.sidebar_lists_container:
-            self.sidebar_lists_container.clear()
+    def refresh_sidebar_tags(self):
+        """刷新侧边栏标签列表"""
+        # 清空标签容器内容
+        if self.sidebar_tags_container:
+            self.sidebar_tags_container.clear()
         
-        # 重新获取用户清单
-        self.refresh_user_lists()
+        # 重新获取用户标签
+        self.refresh_user_tags()
         
-        # 为每个清单创建侧边栏项目
-        with self.sidebar_lists_container:
-            for user_list in self.user_lists:
-                def select_list(list_data=user_list):
-                    def inner_select():
-                        view_type = f'list_{list_data["list_id"]}'
-                        self.current_view = view_type
-                        self.on_view_change(view_type)
-                        self.update_sidebar_active_state()
-                    return inner_select
+        # 为每个标签创建侧边栏项目
+        with self.sidebar_tags_container:
+            # 决定显示的标签列表
+            if not self.tags_expanded and len(self.user_tags) > 8:
+                displayed_tags = self.user_tags[:8]
+            else:
+                displayed_tags = self.user_tags
+            
+            # 如果标签数量大于8，显示滚动容器
+            if len(self.user_tags) > 8:
+                if self.tags_expanded:
+                    # 展开时，标签区域可滚动
+                    with ui.scroll_area().classes('w-full max-h-64'):
+                        with ui.column().classes('w-full gap-1'):
+                            for user_tag in displayed_tags:
+                                self.create_tag_item(user_tag)
+                else:
+                    # 收起时，显示前8个标签
+                    with ui.column().classes('w-full gap-1'):
+                        for user_tag in displayed_tags:
+                            self.create_tag_item(user_tag)
                 
-                # 清单项容器
-                container_classes = 'list-item-container w-full p-3 rounded cursor-pointer flex items-center justify-between'
-                if self.current_view == f'list_{user_list["list_id"]}':
-                    container_classes += ' active'
-                
-                with ui.row().classes(container_classes):
-                    classes = 'flex-1 items-center'
-                    if self.sidebar_collapsed:
-                        classes += ' justify-center'
-                    else:
-                        classes += ' gap-3'
-                    # 左侧：可点击的主要区域
-                    with ui.row().classes(classes).on('click', select_list(user_list)):
-                        # 使用对应颜色的圆圈图标
-                        ui.element('div').classes('w-5 h-5 rounded-full').style(f'background-color: {user_list.get("color", "#2196F3")}; min-width: 20px; min-height: 20px;')
-                        if not self.sidebar_collapsed:
-                            ui.label(user_list['name']).classes('text-sm')
-                            if user_list.get('task_count', 0) > 0:
-                                ui.badge(str(user_list['task_count'])).props('color=grey-5')
-                    
-                    # 右侧：三个点菜单按钮（hover时显示）
-                    if not self.sidebar_collapsed:
-                        with ui.button(icon='more_vert').props('flat round size=xs').classes('list-menu-button'):
-                            with ui.menu():
-                                ui.menu_item('编辑清单', on_click=lambda l=user_list: self.show_edit_list_dialog(l), auto_close=False)
-                                ui.menu_item('删除清单', on_click=lambda l=user_list: self.show_delete_list_confirm(l), auto_close=False)
-                                ui.menu_item('完成清单', on_click=lambda l=user_list: self.show_complete_list_confirm(l), auto_close=False)
+                # 展开/收起按钮
+                if not self.sidebar_collapsed:
+                    with ui.row().classes('w-full justify-center mt-2'):
+                        expand_text = '收起' if self.tags_expanded else f'展开全部 ({len(self.user_tags)})'
+                        ui.button(expand_text, icon='expand_more' if not self.tags_expanded else 'expand_less',
+                                 on_click=self.toggle_tags_expand).props('flat').classes('text-xs')
+            else:
+                # 标签数量<=8，直接显示
+                with ui.column().classes('w-full gap-1'):
+                    for user_tag in displayed_tags:
+                        self.create_tag_item(user_tag)
+    
+    def create_tag_item(self, user_tag: Dict):
+        """创建单个标签项"""
+        def select_tag(tag_data=user_tag):
+            def inner_select():
+                view_type = f'tag_{tag_data["tag_id"]}'
+                self.current_view = view_type
+                self.on_view_change(view_type)
+                self.update_sidebar_active_state()
+            return inner_select
+        
+        # 标签项容器
+        container_classes = 'tag-item-container w-full p-2 rounded cursor-pointer flex items-center justify-between'
+        if self.current_view == f'tag_{user_tag["tag_id"]}':
+            container_classes += ' active'
+        
+        with ui.row().classes(container_classes):
+            classes = 'flex-1 items-center'
+            if self.sidebar_collapsed:
+                classes += ' justify-center'
+            else:
+                classes += ' gap-3'
+            # 左侧：可点击的主要区域
+            with ui.row().classes(classes).on('click', select_tag(user_tag)):
+                # 使用对应颜色的圆圈图标
+                ui.element('div').classes('w-4 h-4 rounded-full').style(f'background-color: {user_tag.get("color", "#757575")}; min-width: 16px; min-height: 16px;')
+                if not self.sidebar_collapsed:
+                    ui.label(user_tag['name']).classes('text-sm')
+                    if user_tag.get('task_count', 0) > 0:
+                        ui.badge(str(user_tag['task_count'])).props('color=grey-5')
+            
+            # 右侧：三个点菜单按钮（hover时显示）
+            if not self.sidebar_collapsed:
+                with ui.button(icon='more_vert').props('flat round size=xs').classes('tag-menu-button'):
+                    with ui.menu():
+                        ui.menu_item('编辑标签', on_click=lambda t=user_tag: self.show_edit_tag_dialog(t), auto_close=False)
+                        ui.menu_item('删除标签', on_click=lambda t=user_tag: self.show_delete_tag_confirm(t), auto_close=False)
+                        ui.menu_item('完成标签任务', on_click=lambda t=user_tag: self.show_complete_tag_confirm(t), auto_close=False)
 
     def toggle_sidebar(self):
         """切换侧边栏展开/折叠状态"""
@@ -178,65 +212,70 @@ class SidebarComponent:
             self.sidebar_container.clear()
             self.create_sidebar(self.sidebar_container)
 
-    def refresh_user_lists(self):
-        """刷新用户清单"""
+    def refresh_user_tags(self):
+        """刷新用户标签"""
         if self.current_user:
-            self.user_lists = self.list_manager.get_user_lists(self.current_user['user_id'])
+            self.user_tags = self.tag_manager.get_user_tags_with_count(self.current_user['user_id'])
 
     def set_current_view(self, view: str):
         """设置当前视图"""
         self.current_view = view
         self.update_sidebar_active_state()
 
-    def get_user_lists(self) -> List[Dict]:
-        """获取用户清单列表"""
-        return self.user_lists 
+    def get_user_tags(self) -> List[Dict]:
+        """获取用户标签列表"""
+        return self.user_tags
     
-    def show_create_list_dialog(self):
-        """显示创建清单对话框"""
-        dialog_result = {'list_name': '', 'list_color': '#2196F3'}
+    def toggle_tags_expand(self):
+        """切换标签展开状态"""
+        self.tags_expanded = not self.tags_expanded
+        self.refresh_sidebar_tags() 
+    
+    def show_create_tag_dialog(self):
+        """显示创建标签对话框"""
+        dialog_result = {'tag_name': '', 'tag_color': '#757575'}
         
-        def create_list():
-            """创建新清单"""
-            if not dialog_result['list_name'].strip():
-                ui.notify('清单名称不能为空', type='warning')
+        def create_tag():
+            """创建新标签"""
+            if not dialog_result['tag_name'].strip():
+                ui.notify('标签名称不能为空', type='warning')
                 return
             
             try:
-                # 创建新清单
-                new_list = self.list_manager.create_list(
+                # 创建新标签
+                new_tag = self.tag_manager.create_tag(
                     user_id=self.current_user['user_id'],
-                    name=dialog_result['list_name'].strip(),
-                    color=dialog_result['list_color']
+                    name=dialog_result['tag_name'].strip(),
+                    color=dialog_result['tag_color']
                 )
                 
-                if new_list:
-                    # 刷新侧边栏清单显示
-                    self.refresh_sidebar_lists()
-                    ui.notify(f'清单 "{dialog_result["list_name"]}" 创建成功！', type='positive')
+                if new_tag:
+                    # 刷新侧边栏标签显示
+                    self.refresh_sidebar_tags()
+                    ui.notify(f'标签 "{dialog_result["tag_name"]}" 创建成功！', type='positive')
                     dialog.close()
                 else:
-                    ui.notify('创建清单失败，请重试', type='negative')
+                    ui.notify('创建标签失败，请重试', type='negative')
             except Exception as e:
-                ui.notify(f'创建清单时出错：{str(e)}', type='negative')
+                ui.notify(f'创建标签时出错：{str(e)}', type='negative')
         
         def on_name_change(e):
-            """处理清单名称变化"""
-            dialog_result['list_name'] = e.value
+            """处理标签名称变化"""
+            dialog_result['tag_name'] = e.value
         
         def on_color_change(color):
             """处理颜色变化"""
-            dialog_result['list_color'] = color
+            dialog_result['tag_color'] = color
         
         # 创建对话框
         with ui.dialog(value=True) as dialog, ui.card().classes('w-80 p-6'):
-            ui.label('新建清单').classes('text-lg font-medium mb-4')
+            ui.label('新建标签').classes('text-lg font-medium mb-4')
             
-            # 清单名称输入
+            # 标签名称输入
             with ui.column().classes('w-full gap-4'):
                 ui.input(
-                    label='清单名称', 
-                    placeholder='请输入清单名称',
+                    label='标签名称', 
+                    placeholder='请输入标签名称',
                     on_change=on_name_change
                 ).classes('w-full').props('outlined')
                 
@@ -246,6 +285,7 @@ class SidebarComponent:
                     
                     # 预设颜色选项
                     colors = [
+                        '#757575',  # 灰色
                         '#2196F3',  # 蓝色
                         '#4CAF50',  # 绿色  
                         '#FF9800',  # 橙色
@@ -264,59 +304,59 @@ class SidebarComponent:
                 # 操作按钮
                 with ui.row().classes('w-full justify-end gap-2 mt-4'):
                     ui.button('取消', on_click=dialog.close).props('flat')
-                    ui.button('创建', on_click=create_list).props('color=primary')
+                    ui.button('创建', on_click=create_tag).props('color=primary')
     
 
-    def show_edit_list_dialog(self, user_list: Dict):
-        """显示编辑清单对话框"""
+    def show_edit_tag_dialog(self, user_tag: Dict):
+        """显示编辑标签对话框"""
         dialog_result = {
-            'list_name': user_list['name'], 
-            'list_color': user_list.get('color', '#2196F3')
+            'tag_name': user_tag['name'], 
+            'tag_color': user_tag.get('color', '#757575')
         }
         
-        def update_list():
-            """更新清单"""
-            if not dialog_result['list_name'].strip():
-                ui.notify('清单名称不能为空', type='warning')
+        def update_tag():
+            """更新标签"""
+            if not dialog_result['tag_name'].strip():
+                ui.notify('标签名称不能为空', type='warning')
                 return
             
             try:
-                success = self.list_manager.update_list(
-                    list_id=user_list['list_id'],
-                    name=dialog_result['list_name'].strip(),
-                    color=dialog_result['list_color']
+                success = self.tag_manager.update_tag(
+                    tag_id=user_tag['tag_id'],
+                    name=dialog_result['tag_name'].strip(),
+                    color=dialog_result['tag_color']
                 )
                 
                 if success:
                     # 刷新界面
-                    self.refresh_sidebar_lists()
+                    self.refresh_sidebar_tags()
                     if self.on_refresh_ui:
                         self.on_refresh_ui()
-                    ui.notify(f'清单 "{dialog_result["list_name"]}" 更新成功！', type='positive')
+                    ui.notify(f'标签 "{dialog_result["tag_name"]}" 更新成功！', type='positive')
                     dialog.close()
                 else:
-                    ui.notify('更新清单失败，请重试', type='negative')
+                    ui.notify('更新标签失败，请重试', type='negative')
             except Exception as e:
-                ui.notify(f'更新清单时出错：{str(e)}', type='negative')
+                ui.notify(f'更新标签时出错：{str(e)}', type='negative')
         
         def on_name_change(e):
-            """处理清单名称变化"""
-            dialog_result['list_name'] = e.value
+            """处理标签名称变化"""
+            dialog_result['tag_name'] = e.value
         
         def on_color_change(color):
             """处理颜色变化"""
-            dialog_result['list_color'] = color
+            dialog_result['tag_color'] = color
         
         # 创建对话框
         with ui.dialog(value=True) as dialog, ui.card().classes('w-80 p-6'):
-            ui.label('编辑清单').classes('text-lg font-medium mb-4')
+            ui.label('编辑标签').classes('text-lg font-medium mb-4')
             
-            # 清单名称输入
+            # 标签名称输入
             with ui.column().classes('w-full gap-4'):
                 name_input = ui.input(
-                    label='清单名称', 
-                    placeholder='请输入清单名称',
-                    value=dialog_result['list_name'],
+                    label='标签名称', 
+                    placeholder='请输入标签名称',
+                    value=dialog_result['tag_name'],
                     on_change=on_name_change
                 ).classes('w-full').props('outlined')
                 
@@ -326,6 +366,7 @@ class SidebarComponent:
                     
                     # 预设颜色选项
                     colors = [
+                        '#757575',  # 灰色
                         '#2196F3',  # 蓝色
                         '#4CAF50',  # 绿色  
                         '#FF9800',  # 橙色
@@ -344,85 +385,70 @@ class SidebarComponent:
                 # 操作按钮
                 with ui.row().classes('w-full justify-end gap-2 mt-4'):
                     ui.button('取消', on_click=dialog.close).props('flat')
-                    ui.button('保存', on_click=update_list).props('color=primary')
+                    ui.button('保存', on_click=update_tag).props('color=primary')
     
-    def show_delete_list_confirm(self, user_list: Dict):
-        """显示删除清单确认对话框"""
-        def delete_list():
-            """删除清单"""
+    def show_delete_tag_confirm(self, user_tag: Dict):
+        """显示删除标签确认对话框"""
+        def delete_tag():
+            """删除标签"""
             try:
-                # 1. 解除清单中任务的绑定
-                self.task_manager.unlink_list_tasks(user_list['list_id'])
-                
-                # 2. 删除清单
-                success = self.list_manager.delete_list(user_list['list_id'])
+                # 删除标签
+                success = self.tag_manager.delete_tag(user_tag['tag_id'])
                 
                 if success:
-                    # 3. 如果当前正在查看被删除的清单，切换到默认视图
-                    if self.current_view == f'list_{user_list["list_id"]}':
+                    # 如果当前正在查看被删除的标签，切换到默认视图
+                    if self.current_view == f'tag_{user_tag["tag_id"]}':
                         self.current_view = 'my_day'
                         self.on_view_change('my_day')
                     
-                    # 4. 刷新界面
-                    self.refresh_sidebar_lists()
+                    # 刷新界面
+                    self.refresh_sidebar_tags()
                     if self.on_refresh_ui:
                         self.on_refresh_ui()
                     
-                    ui.notify(f'清单 "{user_list["name"]}" 已删除', type='positive')
+                    ui.notify(f'标签 "{user_tag["name"]}" 已删除', type='positive')
                     dialog.close()
                 else:
-                    ui.notify('删除清单失败，请重试', type='negative')
+                    ui.notify('删除标签失败，请重试', type='negative')
             except Exception as e:
-                ui.notify(f'删除清单时出错：{str(e)}', type='negative')
+                ui.notify(f'删除标签时出错：{str(e)}', type='negative')
         
         # 创建确认对话框
         with ui.dialog(value=True) as dialog, ui.card().classes('w-80 p-6'):
-            ui.label('删除清单').classes('text-lg font-medium text-red-600 mb-4')
-            ui.label(f'确定要删除清单 "{user_list["name"]}" 吗？').classes('mb-2')
-            ui.label('清单中的任务将被保留，但会解除与清单的关联。').classes('text-sm text-grey-6 mb-4')
+            ui.label('删除标签').classes('text-lg font-medium text-red-600 mb-4')
+            ui.label(f'确定要删除标签 "{user_tag["name"]}" 吗？').classes('mb-2')
+            ui.label('删除后，该标签将从所有任务中移除。').classes('text-sm text-grey-6 mb-4')
             
             with ui.row().classes('w-full justify-end gap-2'):
                 ui.button('取消', on_click=dialog.close).props('flat')
-                ui.button('删除', on_click=delete_list).props('color=negative')
+                ui.button('删除', on_click=delete_tag).props('color=negative')
     
-    def show_complete_list_confirm(self, user_list: Dict):
-        """显示完成清单确认对话框"""
-        def complete_list():
-            """完成清单"""
+    def show_complete_tag_confirm(self, user_tag: Dict):
+        """显示完成标签任务确认对话框"""
+        def complete_tag():
+            """完成标签下的所有任务"""
             try:
-                # 1. 将清单中所有任务标记为完成
-                self.task_manager.complete_list_tasks(user_list['list_id'])
-                
-                # 2. 解除清单中任务的绑定
-                self.task_manager.unlink_list_tasks(user_list['list_id'])
-                
-                # 3. 删除清单
-                success = self.list_manager.delete_list(user_list['list_id'])
+                success = self.tag_manager.complete_tag_tasks(user_tag['tag_id'])
                 
                 if success:
-                    # 4. 如果当前正在查看被完成的清单，切换到默认视图
-                    if self.current_view == f'list_{user_list["list_id"]}':
-                        self.current_view = 'my_day'
-                        self.on_view_change('my_day')
-                    
-                    # 5. 刷新界面
-                    self.refresh_sidebar_lists()
+                    # 刷新界面
+                    self.refresh_sidebar_tags()
                     if self.on_refresh_ui:
                         self.on_refresh_ui()
                     
-                    ui.notify(f'清单 "{user_list["name"]}" 已完成', type='positive')
+                    ui.notify(f'标签 "{user_tag["name"]}" 下的所有任务已完成', type='positive')
                     dialog.close()
                 else:
-                    ui.notify('完成清单失败，请重试', type='negative')
+                    ui.notify('完成任务失败，请重试', type='negative')
             except Exception as e:
-                ui.notify(f'完成清单时出错：{str(e)}', type='negative')
+                ui.notify(f'完成任务时出错：{str(e)}', type='negative')
         
         # 创建确认对话框
         with ui.dialog(value=True) as dialog, ui.card().classes('w-80 p-6'):
-            ui.label('完成清单').classes('text-lg font-medium text-green-600 mb-4')
-            ui.label(f'确定要完成清单 "{user_list["name"]}" 吗？').classes('mb-2')
-            ui.label('清单中的所有任务将被标记为完成，然后清单将被删除。').classes('text-sm text-grey-6 mb-4')
+            ui.label('完成标签任务').classes('text-lg font-medium text-blue-600 mb-4')
+            ui.label(f'确定要完成标签 "{user_tag["name"]}" 下的所有待办任务吗？').classes('mb-2')
+            ui.label('此操作将把该标签下的所有未完成任务标记为已完成。').classes('text-sm text-grey-6 mb-4')
             
             with ui.row().classes('w-full justify-end gap-2'):
                 ui.button('取消', on_click=dialog.close).props('flat')
-                ui.button('完成', on_click=complete_list).props('color=positive')
+                ui.button('完成', on_click=complete_tag).props('color=positive')
