@@ -78,16 +78,3 @@ CREATE TABLE focus_sessions (
     FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
     FOREIGN KEY (task_id) REFERENCES tasks(task_id) ON DELETE SET NULL
 );
-
--- 为每个用户创建默认标签的触发器
-DELIMITER //
-CREATE TRIGGER create_default_tags AFTER INSERT ON users
-FOR EACH ROW
-BEGIN
-    INSERT INTO tags (user_id, name, color) VALUES 
-    (NEW.user_id, '工作', '#2196F3'),
-    (NEW.user_id, '学习', '#4CAF50'),
-    (NEW.user_id, '生活', '#FF9800'),
-    (NEW.user_id, '重要', '#F44336');
-END//
-DELIMITER ; 

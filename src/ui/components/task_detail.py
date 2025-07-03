@@ -127,9 +127,10 @@ class TaskDetailComponent:
                                 
                                 # 添加新标签的输入框
                                 self.new_tag_input = ui.input(
-                                    placeholder='添加标签',
-                                    on_change=self.on_new_tag_input_change
+                                    placeholder='添加标签'
                                 ).classes('flex-shrink-0 w-32').props('dense borderless')
+                                # 添加回车键支持
+                                self.new_tag_input.on('keydown', self.handle_tag_enter_key)
                                 
                                 # 添加按钮
                                 ui.button(
@@ -790,19 +791,28 @@ class TaskDetailComponent:
                 
                 # 重新创建输入框
                 self.new_tag_input = ui.input(
-                    placeholder='添加标签',
-                    on_change=self.on_new_tag_input_change
+                    placeholder='添加标签'
                 ).classes('flex-shrink-0 w-32').props('dense borderless')
+                # 添加回车键支持
+                self.new_tag_input.on('keydown', self.handle_tag_enter_key)
                 
                 ui.button(
                     icon='add',
                     on_click=self.add_new_tag
                 ).props('round dense flat color=primary size=sm')
     
-    def on_new_tag_input_change(self, event):
-        """处理新标签输入变化"""
-        # 检查是否按下回车键
-        pass
+    def handle_tag_enter_key(self, e):
+        """处理标签输入框的回车键事件"""
+        # 检查是否按下了Enter键
+        if e.args.get('key') == 'Enter' and self.new_tag_input.value.strip():
+            self.add_new_tag()
+            # 重新聚焦到输入框
+            ui.run_javascript('''
+                setTimeout(() => {
+                    const input = document.querySelector('input[placeholder="添加标签"]');
+                    if (input) input.focus();
+                }, 100);
+            ''')
     
     def add_new_tag(self):
         """添加新标签"""
@@ -815,6 +825,8 @@ class TaskDetailComponent:
         # 检查标签是否已存在
         if any(tag['name'] == tag_name for tag in current_tags):
             ui.notify(f'标签 "{tag_name}" 已存在', type='warning')
+            # 清空输入框
+            self.new_tag_input.value = ''
             return
         
         # 添加标签到任务
@@ -827,6 +839,8 @@ class TaskDetailComponent:
             updated_task = self.task_manager.get_task_by_id(self.selected_task['task_id'])
             if updated_task:
                 self.selected_task = updated_task
+                # 清空输入框
+                self.new_tag_input.value = ''
                 self.refresh_tags_display()
                 ui.notify(f'已添加标签: {tag_name}', type='positive')
         else:
