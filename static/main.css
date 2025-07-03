@@ -1,0 +1,100 @@
+/* 主页面样式 */
+body {
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    height: 100vh;
+}
+
+.sidebar-container {
+    width: 280px;
+    min-width: 280px;
+    background: white;
+    border-right: 1px solid #e0e0e0;
+    transition: all 0.3s ease;
+    overflow: hidden;
+}
+
+.sidebar-collapsed {
+    width: 70px !important;
+    min-width: 70px !important;
+}
+
+.task-detail-container {
+    width: 360px;
+    min-width: 360px;
+    background: white;
+    border-left: 1px solid #e0e0e0;
+    transition: all 0.3s ease;
+}
+
+.task-detail-hidden {
+    display: none !important;
+}
+
+.timer-mini-container {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: white;
+    border-radius: 25px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    padding: 8px 16px;
+    z-index: 1000;
+}
+
+.task-item {
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+
+.task-item:hover {
+    background: #f5f5f5;
+}
+
+.sidebar-item {
+    transition: all 0.2s ease;
+}
+
+.sidebar-item:hover {
+    background: #f0f8ff;
+}
+
+.sidebar-item {
+    border-right: 3px solid transparent;
+}
+
+.sidebar-item.active {
+    background: #e3f2fd;
+    border-right: 3px solid #2196f3;
+}
+
+/* 标签项样式 */
+.tag-item-container {
+    transition: all 0.2s ease;
+    border-right: 3px solid transparent;
+}
+
+.tag-item-container:hover {
+    background: #f0f8ff;
+}
+
+.tag-item-container.active {
+    background: #e3f2fd;
+    border-right: 3px solid #2196f3;
+}
+
+/* 菜单按钮样式 */
+.tag-menu-button {
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.tag-item-container:hover .tag-menu-button {
+    opacity: 1;
+}
+
+.sidebar-toggle-row {
+    border-right: 3px solid transparent;
+} 

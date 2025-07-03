@@ -37,37 +37,7 @@ class SidebarComponent:
         
         # 添加CSS样式隐藏滚动条和去掉白边
         ui.add_head_html('''
-            <style>
-                .no-scrollbar::-webkit-scrollbar {
-                    display: none !important;
-                }
-                .no-scrollbar {
-                    -ms-overflow-style: none !important;
-                    scrollbar-width: none !important;
-                }
-                .no-scrollbar .q-scrollarea__bar {
-                    display: none !important;
-                }
-                .no-scrollbar .q-scrollarea__thumb {
-                    display: none !important;
-                }
-                .no-scrollbar.q-scrollarea {
-                    padding: 0 !important;
-                    margin: 0 !important;
-                }
-                .no-scrollbar .q-scrollarea__content {
-                    padding: 0 !important;
-                    margin: 0 !important;
-                }
-                .no-scrollbar .q-scrollarea__container {
-                    padding: 0 !important;
-                    margin: 0 !important;
-                }
-                .no-scrollbar .q-scrollarea__viewport {
-                    padding: 0 !important;
-                    margin: 0 !important;
-                }
-            </style>
+            <link rel="stylesheet" href="/static/sidebar.css">
         ''')
 
     def create_sidebar(self, container):
