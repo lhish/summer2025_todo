@@ -22,10 +22,45 @@ class SidebarComponent:
         self.user_tags: List[Dict] = []
         self.sidebar_container = None
         self.sidebar_tags_container = None
-        self.tags_expanded = False  # 标签展开状态
+
         
         # 加载用户标签
         self.refresh_user_tags()
+        
+        # 添加CSS样式隐藏滚动条和去掉白边
+        ui.add_head_html('''
+            <style>
+                .no-scrollbar::-webkit-scrollbar {
+                    display: none !important;
+                }
+                .no-scrollbar {
+                    -ms-overflow-style: none !important;
+                    scrollbar-width: none !important;
+                }
+                .no-scrollbar .q-scrollarea__bar {
+                    display: none !important;
+                }
+                .no-scrollbar .q-scrollarea__thumb {
+                    display: none !important;
+                }
+                .no-scrollbar.q-scrollarea {
+                    padding: 0 !important;
+                    margin: 0 !important;
+                }
+                .no-scrollbar .q-scrollarea__content {
+                    padding: 0 !important;
+                    margin: 0 !important;
+                }
+                .no-scrollbar .q-scrollarea__container {
+                    padding: 0 !important;
+                    margin: 0 !important;
+                }
+                .no-scrollbar .q-scrollarea__viewport {
+                    padding: 0 !important;
+                    margin: 0 !important;
+                }
+            </style>
+        ''')
 
     def create_sidebar(self, container):
         """创建左侧边栏"""
@@ -123,36 +158,10 @@ class SidebarComponent:
         
         # 为每个标签创建侧边栏项目
         with self.sidebar_tags_container:
-            # 决定显示的标签列表
-            if not self.tags_expanded and len(self.user_tags) > 8:
-                displayed_tags = self.user_tags[:8]
-            else:
-                displayed_tags = self.user_tags
-            
-            # 如果标签数量大于8，显示滚动容器
-            if len(self.user_tags) > 8:
-                if self.tags_expanded:
-                    # 展开时，标签区域可滚动
-                    with ui.scroll_area().classes('w-full max-h-64'):
-                        with ui.column().classes('w-full gap-1'):
-                            for user_tag in displayed_tags:
-                                self.create_tag_item(user_tag)
-                else:
-                    # 收起时，显示前8个标签
-                    with ui.column().classes('w-full gap-1'):
-                        for user_tag in displayed_tags:
-                            self.create_tag_item(user_tag)
-                
-                # 展开/收起按钮
-                if not self.sidebar_collapsed:
-                    with ui.row().classes('w-full justify-center mt-2'):
-                        expand_text = '收起' if self.tags_expanded else f'展开全部 ({len(self.user_tags)})'
-                        ui.button(expand_text, icon='expand_more' if not self.tags_expanded else 'expand_less',
-                                 on_click=self.toggle_tags_expand).props('flat').classes('text-xs')
-            else:
-                # 标签数量<=8，直接显示
+            # 始终使用滚动容器，隐藏滚动条
+            with ui.scroll_area().classes('w-full max-h-64 no-scrollbar').style('scrollbar-width: none; -ms-overflow-style: none;'):
                 with ui.column().classes('w-full gap-1'):
-                    for user_tag in displayed_tags:
+                    for user_tag in self.user_tags:
                         self.create_tag_item(user_tag)
     
     def create_tag_item(self, user_tag: Dict):
@@ -226,10 +235,7 @@ class SidebarComponent:
         """获取用户标签列表"""
         return self.user_tags
     
-    def toggle_tags_expand(self):
-        """切换标签展开状态"""
-        self.tags_expanded = not self.tags_expanded
-        self.refresh_sidebar_tags() 
+ 
     
     def show_create_tag_dialog(self):
         """显示创建标签对话框"""
