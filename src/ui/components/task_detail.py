@@ -602,32 +602,69 @@ class TaskDetailComponent:
     
     def has_unsaved_changes(self) -> bool:
         """检查是否有未保存的更改"""
-        if not self.selected_task or not all([
+        if not self.selected_task:
+            return False
+            
+        # 检查必要的组件是否存在
+        if not all([
             self.title_input, self.description_input, self.due_date_input,
-            self.estimated_pomodoros_input, self.tags_input, self.priority_select, self.repeat_select
+            self.estimated_pomodoros_input, self.tags_input
         ]):
+            return False
+        
+        # 检查可选组件
+        if not self.priority_select or not self.repeat_select:
             return False
         
         try:
             # 获取当前表单数据
-            title = self.title_input.value.strip()
-            description = self.description_input.value.strip() if self.description_input.value else None
-            due_date_str = self.due_date_input.value.strip()
-            priority = self.priority_select.value if self.priority_select else 'medium'
-            repeat_cycle = self.repeat_select.value if self.repeat_select else 'none'
-            estimated_pomodoros = int(self.estimated_pomodoros_input.value)
-            tags_str = self.tags_input.value.strip()
+            title = self.title_input.value.strip() if self.title_input.value else ''
             
-            # 检查提醒时间是否改变
+            # 处理描述字段
+            description = self.description_input.value.strip() if self.description_input.value else ''
+            original_description = self.selected_task.get('description', '') or ''
+            
+            # 处理截止日期
+            due_date_str = self.due_date_input.value.strip() if self.due_date_input.value else ''
+            due_date = None
+            if due_date_str:
+                try:
+                    due_date = date.fromisoformat(due_date_str)
+                except ValueError:
+                    # 日期格式错误，认为有更改
+                    return True
+            
+            # 处理原始截止日期
+            original_due_date = self.selected_task.get('due_date')
+            if isinstance(original_due_date, str):
+                try:
+                    original_due_date = date.fromisoformat(original_due_date.split()[0])
+                except:
+                    original_due_date = None
+            
+            # 获取优先级和重复周期
+            priority = self.priority_select.value if self.priority_select.value else 'medium'
+            repeat_cycle = self.repeat_select.value if self.repeat_select.value else 'none'
+            
+            # 获取番茄钟数量
+            try:
+                estimated_pomodoros = int(self.estimated_pomodoros_input.value)
+            except:
+                estimated_pomodoros = 1
+            
+            # 处理标签
+            tags_str = self.tags_input.value.strip() if self.tags_input.value else ''
+            tags = []
+            if tags_str:
+                tags = [tag.strip() for tag in tags_str.split(',') if tag.strip()]
+            
+            # 处理提醒时间
             current_reminder = None
-            if self.reminder_hour_select and self.reminder_minute_select:
-                hour = self.reminder_hour_select.value
-                minute = self.reminder_minute_select.value
-                if hour and minute:
-                    current_reminder = f"{hour}:{minute}"
+            if self.reminder_hour_select and self.reminder_minute_select and self.reminder_hour_select.value and self.reminder_minute_select.value:
+                current_reminder = f"{self.reminder_hour_select.value}:{self.reminder_minute_select.value}"
             
             # 处理原始提醒时间
-            original_reminder_raw = self.selected_task.get('reminder_time', '') or None
+            original_reminder_raw = self.selected_task.get('reminder_time')
             original_reminder = None
             if original_reminder_raw:
                 try:
@@ -637,37 +674,46 @@ class TaskDetailComponent:
                         hours = total_seconds // 3600
                         minutes = (total_seconds % 3600) // 60
                         original_reminder = f'{hours:02d}:{minutes:02d}'
-                    elif isinstance(original_reminder_raw, str):
-                        original_reminder = original_reminder_raw
+                    elif isinstance(original_reminder_raw, str) and original_reminder_raw.strip():
+                        original_reminder = original_reminder_raw.strip()
                 except:
                     pass
             
-            # 处理截止日期
-            due_date = None
-            if due_date_str:
-                try:
-                    due_date = date.fromisoformat(due_date_str)
-                except ValueError:
-                    return True  # 日期格式错误也算有更改
+            # 比较各个字段是否有更改
+            title_changed = title != (self.selected_task.get('title', '') or '')
+            description_changed = description != original_description
+            due_date_changed = due_date != original_due_date
+            priority_changed = priority != self.selected_task.get('priority', 'medium')
+            repeat_changed = repeat_cycle != self.selected_task.get('repeat_cycle', 'none')
+            pomodoros_changed = estimated_pomodoros != self.selected_task.get('estimated_pomodoros', 1)
+            tags_changed = self._tags_changed(tags)
+            reminder_changed = current_reminder != original_reminder
             
-            # 处理标签
-            tags = []
-            if tags_str:
-                tags = [tag.strip() for tag in tags_str.split(',') if tag.strip()]
+            # 调试输出（可以在开发时启用）
+            # print(f"Debug - Title: '{title}' vs '{self.selected_task.get('title', '')}' = {title_changed}")
+            # print(f"Debug - Description: '{description}' vs '{original_description}' = {description_changed}")
+            # print(f"Debug - Due date: {due_date} vs {original_due_date} = {due_date_changed}")
+            # print(f"Debug - Priority: '{priority}' vs '{self.selected_task.get('priority', 'medium')}' = {priority_changed}")
+            # print(f"Debug - Repeat: '{repeat_cycle}' vs '{self.selected_task.get('repeat_cycle', 'none')}' = {repeat_changed}")
+            # print(f"Debug - Pomodoros: {estimated_pomodoros} vs {self.selected_task.get('estimated_pomodoros', 1)} = {pomodoros_changed}")
+            # print(f"Debug - Tags: {tags_changed}")
+            # print(f"Debug - Reminder: '{current_reminder}' vs '{original_reminder}' = {reminder_changed}")
             
-            # 检查是否有更改
             return (
-                title != self.selected_task['title'] or
-                description != self.selected_task.get('description') or
-                due_date != self.selected_task.get('due_date') or
-                priority != self.selected_task.get('priority', 'medium') or
-                repeat_cycle != self.selected_task.get('repeat_cycle', 'none') or
-                estimated_pomodoros != self.selected_task.get('estimated_pomodoros', 1) or
-                self._tags_changed(tags) or
-                current_reminder != original_reminder
+                title_changed or
+                description_changed or
+                due_date_changed or
+                priority_changed or
+                repeat_changed or
+                pomodoros_changed or
+                tags_changed or
+                reminder_changed
             )
-        except:
-            return True  # 如果检查出错，认为有更改
+            
+        except Exception as e:
+            # 如果检查过程中出现错误，为了安全起见认为没有更改
+            print(f"Error in has_unsaved_changes: {e}")
+            return False
 
     def close_with_unsaved_check(self):
         """关闭前检查是否有未保存的更改"""
