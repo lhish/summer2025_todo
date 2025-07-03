@@ -158,7 +158,8 @@ class MainPage:
             self.task_manager,
             self.refresh_and_update_ui,
             self.start_pomodoro_for_task,
-            self.close_task_detail
+            self.close_task_detail,
+            self.current_user['user_id']
         )
         
         # 设置组件

@@ -4,6 +4,7 @@
 
 from nicegui import ui
 from typing import Dict, List, Callable, Optional
+from .tag_edit_dialog import TagEditDialog
 
 
 class SidebarComponent:
@@ -22,6 +23,13 @@ class SidebarComponent:
         self.user_tags: List[Dict] = []
         self.sidebar_container = None
         self.sidebar_tags_container = None
+        
+        # 初始化标签编辑对话框组件
+        self.tag_edit_dialog = TagEditDialog(
+            tag_manager=tag_manager,
+            on_success=self._on_tag_dialog_success,
+            user_id=current_user['user_id']
+        )
 
         
         # 加载用户标签
@@ -236,163 +244,22 @@ class SidebarComponent:
         """获取用户标签列表"""
         return self.user_tags
     
- 
+    def _on_tag_dialog_success(self):
+        """标签对话框成功后的回调"""
+        # 刷新侧边栏标签显示
+        self.refresh_sidebar_tags()
+        # 刷新整个界面
+        if self.on_refresh_ui:
+            self.on_refresh_ui()
     
     def show_create_tag_dialog(self):
         """显示创建标签对话框"""
-        dialog_result = {'tag_name': '', 'tag_color': '#757575'}
-        
-        def create_tag():
-            """创建新标签"""
-            if not dialog_result['tag_name'].strip():
-                ui.notify('标签名称不能为空', type='warning')
-                return
-            
-            try:
-                # 创建新标签
-                new_tag = self.tag_manager.create_tag(
-                    user_id=self.current_user['user_id'],
-                    name=dialog_result['tag_name'].strip(),
-                    color=dialog_result['tag_color']
-                )
-                
-                if new_tag:
-                    # 刷新侧边栏标签显示
-                    self.refresh_sidebar_tags()
-                    ui.notify(f'标签 "{dialog_result["tag_name"]}" 创建成功！', type='positive')
-                    dialog.close()
-                else:
-                    ui.notify('创建标签失败，请重试', type='negative')
-            except Exception as e:
-                ui.notify(f'创建标签时出错：{str(e)}', type='negative')
-        
-        def on_name_change(e):
-            """处理标签名称变化"""
-            dialog_result['tag_name'] = e.value
-        
-        def on_color_change(color):
-            """处理颜色变化"""
-            dialog_result['tag_color'] = color
-        
-        # 创建对话框
-        with ui.dialog(value=True) as dialog, ui.card().classes('w-80 p-6'):
-            ui.label('新建标签').classes('text-lg font-medium mb-4')
-            
-            # 标签名称输入
-            with ui.column().classes('w-full gap-4'):
-                ui.input(
-                    label='标签名称', 
-                    placeholder='请输入标签名称',
-                    on_change=on_name_change
-                ).classes('w-full').props('outlined')
-                
-                # 颜色选择
-                with ui.row().classes('w-full items-center gap-3'):
-                    ui.label('颜色:').classes('text-sm')
-                    
-                    # 预设颜色选项
-                    colors = [
-                        '#757575',  # 灰色
-                        '#2196F3',  # 蓝色
-                        '#4CAF50',  # 绿色  
-                        '#FF9800',  # 橙色
-                        '#9C27B0',  # 紫色
-                        '#F44336',  # 红色
-                        '#607D8B',  # 蓝灰色
-                        '#795548',  # 棕色
-                        '#E91E63'   # 粉色
-                    ]
-                    
-                    with ui.row().classes('gap-2'):
-                        for color in colors:
-                            color_button = ui.button().props(f'flat round size=sm').style(f'background-color: {color}; min-width: 28px; height: 28px;')
-                            color_button.on('click', lambda c=color: on_color_change(c))
-                
-                # 操作按钮
-                with ui.row().classes('w-full justify-end gap-2 mt-4'):
-                    ui.button('取消', on_click=dialog.close).props('flat')
-                    ui.button('创建', on_click=create_tag).props('color=primary')
+        self.tag_edit_dialog.show_create_dialog()
     
 
     def show_edit_tag_dialog(self, user_tag: Dict):
         """显示编辑标签对话框"""
-        dialog_result = {
-            'tag_name': user_tag['name'], 
-            'tag_color': user_tag.get('color', '#757575')
-        }
-        
-        def update_tag():
-            """更新标签"""
-            if not dialog_result['tag_name'].strip():
-                ui.notify('标签名称不能为空', type='warning')
-                return
-            
-            try:
-                success = self.tag_manager.update_tag(
-                    tag_id=user_tag['tag_id'],
-                    name=dialog_result['tag_name'].strip(),
-                    color=dialog_result['tag_color']
-                )
-                
-                if success:
-                    # 刷新界面
-                    self.refresh_sidebar_tags()
-                    if self.on_refresh_ui:
-                        self.on_refresh_ui()
-                    ui.notify(f'标签 "{dialog_result["tag_name"]}" 更新成功！', type='positive')
-                    dialog.close()
-                else:
-                    ui.notify('更新标签失败，请重试', type='negative')
-            except Exception as e:
-                ui.notify(f'更新标签时出错：{str(e)}', type='negative')
-        
-        def on_name_change(e):
-            """处理标签名称变化"""
-            dialog_result['tag_name'] = e.value
-        
-        def on_color_change(color):
-            """处理颜色变化"""
-            dialog_result['tag_color'] = color
-        
-        # 创建对话框
-        with ui.dialog(value=True) as dialog, ui.card().classes('w-80 p-6'):
-            ui.label('编辑标签').classes('text-lg font-medium mb-4')
-            
-            # 标签名称输入
-            with ui.column().classes('w-full gap-4'):
-                name_input = ui.input(
-                    label='标签名称', 
-                    placeholder='请输入标签名称',
-                    value=dialog_result['tag_name'],
-                    on_change=on_name_change
-                ).classes('w-full').props('outlined')
-                
-                # 颜色选择
-                with ui.row().classes('w-full items-center gap-3'):
-                    ui.label('颜色:').classes('text-sm')
-                    
-                    # 预设颜色选项
-                    colors = [
-                        '#757575',  # 灰色
-                        '#2196F3',  # 蓝色
-                        '#4CAF50',  # 绿色  
-                        '#FF9800',  # 橙色
-                        '#9C27B0',  # 紫色
-                        '#F44336',  # 红色
-                        '#607D8B',  # 蓝灰色
-                        '#795548',  # 棕色
-                        '#E91E63'   # 粉色
-                    ]
-                    
-                    with ui.row().classes('gap-2'):
-                        for color in colors:
-                            color_button = ui.button().props(f'flat round size=sm').style(f'background-color: {color}; min-width: 28px; height: 28px;')
-                            color_button.on('click', lambda c=color: on_color_change(c))
-                
-                # 操作按钮
-                with ui.row().classes('w-full justify-end gap-2 mt-4'):
-                    ui.button('取消', on_click=dialog.close).props('flat')
-                    ui.button('保存', on_click=update_tag).props('color=primary')
+        self.tag_edit_dialog.show_edit_dialog(user_tag)
     
     def show_delete_tag_confirm(self, user_tag: Dict):
         """显示删除标签确认对话框"""
