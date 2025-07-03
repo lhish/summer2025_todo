@@ -194,7 +194,11 @@ class TaskDetailComponent:
                                 label='重复周期'
                             ).classes('flex-1 min-w-0').props('borderless')
                             # 添加值改变时自动保存
-                            self.repeat_select.on('change', lambda: self.auto_save_field('repeat_cycle'))
+                            def on_repeat_change():
+                                if self.repeat_select:
+                                    current_value = self.repeat_select.value
+                                    self.auto_save_field('repeat_cycle', new_value=current_value)
+                            self.repeat_select.on('update:model-value', on_repeat_change)
                         
                         # 优先级（可编辑）
                         with ui.row().classes('w-full items-center gap-2 sm:gap-3'):
@@ -214,7 +218,11 @@ class TaskDetailComponent:
                                 label='优先级'
                             ).classes('flex-1 min-w-0').props('borderless')
                             # 添加值改变时自动保存
-                            self.priority_select.on('change', lambda: self.auto_save_field('priority'))
+                            def on_priority_change():
+                                if self.priority_select:
+                                    current_value = self.priority_select.value
+                                    self.auto_save_field('priority', new_value=current_value)
+                            self.priority_select.on('update:model-value', on_priority_change)
                         
                         # 备注
                         with ui.column().classes('w-full gap-2'):
@@ -582,102 +590,79 @@ class TaskDetailComponent:
         """显示编辑标签对话框"""
         self.tag_edit_dialog.show_edit_dialog(user_tag)
 
-    def auto_save_field(self, field_name: str):
-        """自动保存单个字段"""
+    def auto_save_field(self, field_name: str, new_value: any = None):
+        """自动保存单个字段。可以接收来自事件的值，也可以自己从组件获取。"""
         if not self.selected_task or not self.task_detail_open:
             return
-        
+
         try:
-            # 获取当前字段值
             current_value = None
-            original_value = None
-            
-            if field_name == 'title':
-                if not self.title_input:
-                    return
-                current_value = self.title_input.value.strip() if self.title_input.value else ''
-                original_value = self.selected_task.get('title', '')
-                if not current_value:
-                    ui.notify('任务标题不能为空', type='warning')
-                    return
-                    
-            elif field_name == 'description':
-                if not self.description_input:
-                    return
-                current_value = self.description_input.value.strip() if self.description_input.value else None
-                original_value = self.selected_task.get('description')
-                
-            elif field_name == 'due_date':
-                if not self.due_date_input:
-                    return
-                due_date_value = self.due_date_input.value
-                current_value = None
-                if due_date_value:
+            original_value = self.selected_task.get(field_name)
+
+            # 优先使用事件传递过来的新值 (new_value)
+            if new_value is not None:
+                current_value = new_value
+            # 否则，从对应的UI组件读取值 (用于 on('blur') 事件)
+            else:
+                if field_name == 'title':
+                    if not self.title_input: return
+                    current_value = self.title_input.value.strip() if self.title_input.value else ''
+                    if not current_value:
+                        ui.notify('任务标题不能为空', type='warning')
+                        return
+                elif field_name == 'description':
+                    if not self.description_input: return
+                    current_value = self.description_input.value.strip() if self.description_input.value else None
+                elif field_name == 'due_date':
+                    if not self.due_date_input: return
+                    due_date_str = self.due_date_input.value
+                    if due_date_str:
+                        try:
+                            current_value = date.fromisoformat(due_date_str.strip()) if due_date_str.strip() else None
+                        except ValueError:
+                            ui.notify('日期格式不正确', type='warning')
+                            return
+                elif field_name == 'estimated_pomodoros':
+                    if not self.estimated_pomodoros_input: return
                     try:
-                        current_value = date.fromisoformat(due_date_value.strip()) if due_date_value.strip() else None
-                    except ValueError:
-                        ui.notify('日期格式不正确', type='warning')
+                        current_value = int(self.estimated_pomodoros_input.value)
+                        if current_value < 1:
+                            ui.notify('预估番茄钟数量至少为1', type='warning')
+                            return
+                    except (ValueError, TypeError):
+                        ui.notify('请输入有效的数字', type='warning')
                         return
-                original_value = self.selected_task.get('due_date')
-                
-            elif field_name == 'priority':
-                if not self.priority_select:
-                    return
-                current_value = self.priority_select.value or 'medium'
-                original_value = self.selected_task.get('priority', 'medium')
-                
-            elif field_name == 'estimated_pomodoros':
-                if not self.estimated_pomodoros_input:
-                    return
-                try:
-                    current_value = int(self.estimated_pomodoros_input.value)
-                    if current_value < 1:
-                        ui.notify('预估番茄钟数量至少为1', type='warning')
-                        return
-                except (ValueError, TypeError):
-                    ui.notify('请输入有效的数字', type='warning')
-                    return
-                original_value = self.selected_task.get('estimated_pomodoros', 1)
-                
-            elif field_name == 'repeat_cycle':
-                if not self.repeat_select:
-                    return
-                current_value = self.repeat_select.value or 'none'
-                original_value = self.selected_task.get('repeat_cycle', 'none')
+            
+            # 对原始值进行适配，以便比较
+            # (例如，数据库里存的是'medium'，但get出来可能是None，需要修正)
+            if field_name in ['priority', 'repeat_cycle'] and original_value is None:
+                original_value = 'medium' if field_name == 'priority' else 'none'
             
             # 检查是否有变化
             if current_value == original_value:
                 return  # 没有变化，不需要保存
-            
-            # 构建更新参数
+
+            # 构建并执行更新
             update_params = {
                 'task_id': self.selected_task['task_id'],
                 field_name: current_value
             }
             
-            # 更新数据库
             success = self.task_manager.update_task(**update_params)
             
             if success:
-                # 更新本地数据
                 self.selected_task[field_name] = current_value
-                
-                # 显示保存提示
                 field_display_names = {
-                    'title': '标题',
-                    'description': '描述',
-                    'due_date': '到期日',
-                    'priority': '优先级',
-                    'estimated_pomodoros': '预估番茄钟',
-                    'repeat_cycle': '重复周期'
+                    'title': '标题', 'description': '描述', 'due_date': '到期日',
+                    'priority': '优先级', 'estimated_pomodoros': '预估番茄钟', 'repeat_cycle': '重复周期'
                 }
                 field_display = field_display_names.get(field_name, field_name)
-                ui.notify(f'{field_display}已保存', type='info', timeout=1500)
-                
-                # 触发界面更新
+                ui.notify(f'{field_display}已保存', type='info', timeout=1500, position='top')
                 self.on_task_update()
             else:
-                ui.notify(f'{field_display_names.get(field_name, field_name)}保存失败', type='negative')
-                
+                ui.notify(f'保存失败', type='negative')
+
+        except (ValueError, TypeError) as e:
+            ui.notify(f'输入值无效: {e}', type='warning')
         except Exception as e:
             ui.notify(f'保存失败: {str(e)}', type='negative')
