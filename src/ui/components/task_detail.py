@@ -98,9 +98,8 @@ class TaskDetailComponent:
                                 # 显示现有标签
                                 for tag in current_tags:
                                     def edit_tag(tag_data=tag):
-                                        # TODO: 这里应该跳转到标签编辑界面
-                                        # 由于没有直接的回调，先简单显示提示
-                                        ui.notify(f'编辑标签: {tag_data["name"]}', type='info')
+                                        # 调用标签编辑对话框
+                                        self.show_edit_tag_dialog(tag_data)
                                     
                                     def remove_tag(tag_data=tag):
                                         # 从任务中移除标签
@@ -766,7 +765,8 @@ class TaskDetailComponent:
                 # 显示现有标签
                 for tag in current_tags:
                     def edit_tag(tag_data=tag):
-                        ui.notify(f'编辑标签: {tag_data["name"]}', type='info')
+                        # 调用标签编辑对话框
+                        self.show_edit_tag_dialog(tag_data)
                     
                     def remove_tag(tag_data=tag):
                         updated_tags = [t for t in current_tags if t['tag_id'] != tag_data['tag_id']]
@@ -875,3 +875,88 @@ class TaskDetailComponent:
             dialog.open()
         else:
             self.close_task_detail()
+
+    def show_edit_tag_dialog(self, user_tag: Dict):
+        """显示编辑标签对话框"""
+        dialog_result = {
+            'tag_name': user_tag['name'], 
+            'tag_color': user_tag.get('color', '#757575')
+        }
+        
+        def update_tag():
+            """更新标签"""
+            if not dialog_result['tag_name'].strip():
+                ui.notify('标签名称不能为空', type='warning')
+                return
+            
+            try:
+                # 通过task_manager访问tag_manager
+                success = self.task_manager.tag_manager.update_tag(
+                    tag_id=user_tag['tag_id'],
+                    name=dialog_result['tag_name'].strip(),
+                    color=dialog_result['tag_color']
+                )
+                
+                if success:
+                    # 重新获取任务数据以获取更新后的标签信息
+                    updated_task = self.task_manager.get_task_by_id(self.selected_task['task_id'])
+                    if updated_task:
+                        self.selected_task = updated_task
+                        self.refresh_tags_display()
+                        # 触发任务更新回调
+                        self.on_task_update()
+                    
+                    ui.notify(f'标签 "{dialog_result["tag_name"]}" 更新成功！', type='positive')
+                    dialog.close()
+                else:
+                    ui.notify('更新标签失败，请重试', type='negative')
+            except Exception as e:
+                ui.notify(f'更新标签时出错：{str(e)}', type='negative')
+        
+        def on_name_change(e):
+            """处理标签名称变化"""
+            dialog_result['tag_name'] = e.value
+        
+        def on_color_change(color):
+            """处理颜色变化"""
+            dialog_result['tag_color'] = color
+        
+        # 创建对话框
+        with ui.dialog(value=True) as dialog, ui.card().classes('w-80 p-6'):
+            ui.label('编辑标签').classes('text-lg font-medium mb-4')
+            
+            # 标签名称输入
+            with ui.column().classes('w-full gap-4'):
+                name_input = ui.input(
+                    label='标签名称', 
+                    placeholder='请输入标签名称',
+                    value=dialog_result['tag_name'],
+                    on_change=on_name_change
+                ).classes('w-full').props('outlined')
+                
+                # 颜色选择
+                with ui.row().classes('w-full items-center gap-3'):
+                    ui.label('颜色:').classes('text-sm')
+                    
+                    # 预设颜色选项
+                    colors = [
+                        '#757575',  # 灰色
+                        '#2196F3',  # 蓝色
+                        '#4CAF50',  # 绿色  
+                        '#FF9800',  # 橙色
+                        '#9C27B0',  # 紫色
+                        '#F44336',  # 红色
+                        '#607D8B',  # 蓝灰色
+                        '#795548',  # 棕色
+                        '#E91E63'   # 粉色
+                    ]
+                    
+                    with ui.row().classes('gap-2'):
+                        for color in colors:
+                            color_button = ui.button().props(f'flat round size=sm').style(f'background-color: {color}; min-width: 28px; height: 28px;')
+                            color_button.on('click', lambda c=color: on_color_change(c))
+                
+                # 操作按钮
+                with ui.row().classes('w-full justify-end gap-2 mt-4'):
+                    ui.button('取消', on_click=dialog.close).props('flat')
+                    ui.button('保存', on_click=update_tag).props('color=primary')
