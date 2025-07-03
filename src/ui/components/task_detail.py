@@ -16,6 +16,7 @@ class TaskDetailComponent:
         self.on_close = on_close
         self.user_id = user_id
         self.selected_task: Optional[Dict] = None
+        self.initial_task_state: Optional[Dict] = None  # 保存初始状态
         self.task_detail_open = False
         
         # UI 组件引用
@@ -72,10 +73,13 @@ class TaskDetailComponent:
                             placeholder='输入任务标题...',
                             value=self.selected_task['title']
                         ).classes('flex-1 text-base sm:text-lg font-medium').props('borderless')
+                        # 添加失去焦点时自动保存
+                        self.title_input.on('blur', lambda: self.auto_save_field('title'))
                         
-                        # 操作按钮
-                        ui.button(icon='refresh', on_click=self.reset_form).props('flat round size=sm color=grey').tooltip('重置表单')
+                        # 删除按钮
                         ui.button(icon='delete', on_click=self.delete_task).props('flat round size=sm color=negative').tooltip('删除任务')
+                        
+
                     
                     # 分隔线
                     ui.separator().classes('mb-4')
@@ -149,6 +153,8 @@ class TaskDetailComponent:
                                 min=1,
                                 max=20
                             ).classes('w-16 sm:w-20').props('borderless dense')
+                            # 添加失去焦点时自动保存
+                            self.estimated_pomodoros_input.on('blur', lambda: self.auto_save_field('estimated_pomodoros'))
                             ui.label('个').classes('text-sm sm:text-base')
                             
                             # 显示已使用数量
@@ -166,6 +172,8 @@ class TaskDetailComponent:
                                 placeholder='设置到期日',
                                 value=due_date_value or ''
                             ).props('type=date borderless').classes('flex-1 min-w-0')
+                            # 添加失去焦点时自动保存
+                            self.due_date_input.on('blur', lambda: self.auto_save_field('due_date'))
                         
                         # 重复周期（可编辑）
                         with ui.row().classes('w-full items-center gap-2 sm:gap-3'):
@@ -185,6 +193,8 @@ class TaskDetailComponent:
                                 value=current_repeat,
                                 label='重复周期'
                             ).classes('flex-1 min-w-0').props('borderless')
+                            # 添加值改变时自动保存
+                            self.repeat_select.on('change', lambda: self.auto_save_field('repeat_cycle'))
                         
                         # 优先级（可编辑）
                         with ui.row().classes('w-full items-center gap-2 sm:gap-3'):
@@ -203,6 +213,8 @@ class TaskDetailComponent:
                                 value=current_priority,
                                 label='优先级'
                             ).classes('flex-1 min-w-0').props('borderless')
+                            # 添加值改变时自动保存
+                            self.priority_select.on('change', lambda: self.auto_save_field('priority'))
                         
                         # 备注
                         with ui.column().classes('w-full gap-2'):
@@ -210,6 +222,8 @@ class TaskDetailComponent:
                                 placeholder='添加备注...',
                                 value=self.selected_task.get('description', '') or ''
                             ).classes('w-full min-h-20').props('borderless auto-grow')
+                            # 添加失去焦点时自动保存
+                            self.description_input.on('blur', lambda: self.auto_save_field('description'))
                     
                     # 底部区域
                     ui.space().classes('flex-grow min-h-4')
@@ -231,10 +245,12 @@ class TaskDetailComponent:
                     
                     # 底部操作区
                     with ui.column().classes('w-full gap-3'):
-                        # 保存和取消按钮
-                        with ui.row().classes('w-full gap-2'):
-                            ui.button('保存', icon='save', on_click=self.save_task_changes).props('color=primary').classes('flex-1')
-                            ui.button('取消', icon='close', on_click=self.close_with_unsaved_check).props('color=grey').classes('flex-1')
+                        # 操作按钮区域
+                        with ui.row().classes('w-full justify-between items-center'):
+                            # 关闭和重置按钮
+                            with ui.row().classes('gap-2'):
+                                ui.button('关闭', icon='close', on_click=self.close_task_detail).props('flat color=grey size=sm').tooltip('关闭详情面板')
+                                ui.button('重置', icon='refresh', on_click=self.reset_form).props('flat color=grey size=sm').tooltip('重置到初始状态')
                         
                         # 创建日期
                         with ui.row().classes('w-full justify-center mt-2'):
@@ -247,6 +263,7 @@ class TaskDetailComponent:
         """关闭任务详情面板"""
         self.task_detail_open = False
         self.selected_task = None
+        self.initial_task_state = None  # 清理初始状态
         
         # 清理UI组件引用
         self.title_input = None
@@ -254,57 +271,87 @@ class TaskDetailComponent:
         self.due_date_input = None
         self.priority_select = None
         self.estimated_pomodoros_input = None
-        self.tags_input = None
+        self.tags_container = None
+        self.new_tag_input = None
         self.repeat_select = None
         
         self.on_close()
 
-    def validate_form_data(self) -> bool:
-        """验证表单数据"""
-        if not self.title_input or not self.title_input.value.strip():
-            ui.notify('任务标题不能为空', type='negative')
-            return False
-        
-        if self.estimated_pomodoros_input and self.estimated_pomodoros_input.value < 1:
-            ui.notify('预估番茄钟数量至少为1', type='negative')
-            return False
-        
-        return True
+
 
     def reset_form(self):
-        """重置表单到任务原始数据"""
-        if not self.selected_task:
+        """重置表单到初始状态"""
+        if not self.initial_task_state:
+            ui.notify('无法重置：没有初始状态数据', type='warning')
             return
         
-        if self.title_input:
-            self.title_input.value = self.selected_task['title']
-        
-        if self.description_input:
-            self.description_input.value = self.selected_task.get('description', '') or ''
-        
-        if self.due_date_input:
-            due_date_value = self.selected_task.get('due_date')
-            if due_date_value and isinstance(due_date_value, str):
-                due_date_value = due_date_value.split()[0]
-            self.due_date_input.value = due_date_value or ''
-        
-        if self.estimated_pomodoros_input:
-            self.estimated_pomodoros_input.value = self.selected_task.get('estimated_pomodoros', 1)
-        
-        if self.tags_input:
-            current_tags = self.selected_task.get('tags', [])
-            tag_names = [tag['name'] for tag in current_tags] if current_tags else []
-            self.tags_input.value = ', '.join(tag_names)
-        
-        if self.repeat_select:
-            self.repeat_select.value = self.selected_task.get('repeat_cycle', 'none')
-        
-        if self.priority_select:
-            self.priority_select.value = self.selected_task.get('priority', 'medium')
+        try:
+            # 重置各个字段到初始状态
+            if self.title_input:
+                self.title_input.value = self.initial_task_state['title']
+            
+            if self.description_input:
+                self.description_input.value = self.initial_task_state['description']
+            
+            if self.due_date_input:
+                due_date_value = self.initial_task_state['due_date']
+                if due_date_value and isinstance(due_date_value, str):
+                    due_date_value = due_date_value.split()[0]
+                self.due_date_input.value = due_date_value or ''
+            
+            if self.estimated_pomodoros_input:
+                self.estimated_pomodoros_input.value = self.initial_task_state['estimated_pomodoros']
+            
+            if self.repeat_select:
+                self.repeat_select.value = self.initial_task_state['repeat_cycle']
+            
+            if self.priority_select:
+                self.priority_select.value = self.initial_task_state['priority']
+            
+            # 重置标签到初始状态
+            initial_tag_names = [tag['name'] for tag in self.initial_task_state['tags']]
+            
+            # 更新任务标签到初始状态
+            success = self.task_manager.update_task(
+                task_id=self.selected_task['task_id'],
+                title=self.initial_task_state['title'],
+                description=self.initial_task_state['description'],
+                due_date=self.initial_task_state['due_date'],
+                priority=self.initial_task_state['priority'],
+                estimated_pomodoros=self.initial_task_state['estimated_pomodoros'],
+                repeat_cycle=self.initial_task_state['repeat_cycle'],
+                tags=initial_tag_names
+            )
+            
+            if success:
+                # 重新获取任务数据以更新标签显示
+                updated_task = self.task_manager.get_task_by_id(self.selected_task['task_id'])
+                if updated_task:
+                    self.selected_task = updated_task
+                    self.refresh_tags_display()
+                
+                ui.notify('已重置到初始状态', type='positive')
+                # 触发界面更新
+                self.on_task_update()
+            else:
+                ui.notify('重置失败', type='negative')
+                
+        except Exception as e:
+            ui.notify(f'重置失败: {str(e)}', type='negative')
 
     def show_task_detail(self, task: Dict, container):
         """显示任务详情"""
         self.selected_task = task
+        # 保存初始状态，用于重置功能
+        self.initial_task_state = {
+            'title': task.get('title', ''),
+            'description': task.get('description', '') or '',
+            'due_date': task.get('due_date'),
+            'priority': task.get('priority', 'medium'),
+            'estimated_pomodoros': task.get('estimated_pomodoros', 1),
+            'repeat_cycle': task.get('repeat_cycle', 'none'),
+            'tags': [tag.copy() for tag in task.get('tags', [])]  # 深拷贝标签
+        }
         self.task_detail_open = True
         self.create_task_detail_panel(container)
 
@@ -316,113 +363,7 @@ class TaskDetailComponent:
         """获取选中的任务"""
         return self.selected_task
 
-    def save_task_changes(self) -> bool:
-        """保存任务更改到数据库"""
-        if not self.selected_task or not all([
-            self.title_input, self.description_input, self.due_date_input,
-            self.estimated_pomodoros_input, self.tags_input, self.priority_select, self.repeat_select
-        ]):
-            ui.notify('表单未正确初始化', type='negative')
-            return False
-        
-        # 验证表单数据
-        if not self.validate_form_data():
-            return False
-        
-        try:
-            # 获取表单数据
-            title = self.title_input.value.strip() if self.title_input.value else ''
-            description = self.description_input.value.strip() if self.description_input.value else None
-            due_date_value = self.due_date_input.value
-            priority = self.priority_select.value if self.priority_select else 'medium'
-            repeat_cycle = self.repeat_select.value if self.repeat_select else 'none'
-            estimated_pomodoros = int(self.estimated_pomodoros_input.value)
-            # 标签现在由chip组件管理，不需要从input获取
-            tags_str = ''
-            
-            # 处理截止日期 - 修复类型错误
-            due_date = None
-            if due_date_value:
-                if isinstance(due_date_value, str):
-                    due_date_str = due_date_value.strip()
-                    if due_date_str:
-                        try:
-                            due_date = date.fromisoformat(due_date_str)
-                        except ValueError:
-                            ui.notify('日期格式不正确', type='negative')
-                            return False
-                elif isinstance(due_date_value, date):
-                    due_date = due_date_value
-                else:
-                    # 处理其他可能的日期类型
-                    try:
-                        due_date = date.fromisoformat(str(due_date_value))
-                    except (ValueError, TypeError):
-                        ui.notify('日期格式不正确', type='negative')
-                        return False
-            
-            # 处理标签
-            tags = []
-            if tags_str:
-                tags = [tag.strip() for tag in tags_str.split(',') if tag.strip()]
-            
-            # 检查是否有实际更改
-            has_changes = (
-                title != self.selected_task['title'] or
-                description != self.selected_task.get('description') or
-                due_date != self.selected_task.get('due_date') or
-                priority != self.selected_task.get('priority', 'medium') or
-                repeat_cycle != self.selected_task.get('repeat_cycle', 'none') or
-                estimated_pomodoros != self.selected_task.get('estimated_pomodoros', 1) or
-                self._tags_changed(tags)
-            )
-            
-            if not has_changes:
-                ui.notify('没有检测到更改', type='info')
-                return True
-            
-            # 更新任务到数据库
-            success = self.task_manager.update_task(
-                task_id=self.selected_task['task_id'],
-                title=title,
-                description=description,
-                due_date=due_date,
-                priority=priority,
-                repeat_cycle=repeat_cycle,
-                estimated_pomodoros=estimated_pomodoros,
-                tags=tags
-            )
-            
-            if success:
-                ui.notify('任务更新成功', type='positive')
-                
-                # 更新本地任务数据
-                self.selected_task.update({
-                    'title': title,
-                    'description': description,
-                    'due_date': due_date,
-                    'priority': priority,
-                    'repeat_cycle': repeat_cycle,
-                    'estimated_pomodoros': estimated_pomodoros,
-                })
-                
-                # 刷新任务数据以获取最新的标签信息
-                self.refresh_task_data()
-                
-                # 通知父组件更新
-                self.on_task_update()
-                
-                return True
-            else:
-                ui.notify('任务更新失败，请检查网络连接或重试', type='negative')
-                return False
-                
-        except ValueError as e:
-            ui.notify(f'数据格式错误: {str(e)}', type='negative')
-            return False
-        except Exception as e:
-            ui.notify(f'保存失败: {str(e)}', type='negative')
-            return False
+
 
     def delete_task(self):
         """删除任务（带确认对话框）"""
@@ -527,105 +468,7 @@ class TaskDetailComponent:
         
         return f'{remaining * 25}分钟'
     
-    def _tags_changed(self, new_tags: List[str]) -> bool:
-        """检查标签是否有更改"""
-        try:
-            current_tags = self.selected_task.get('tags', [])
-            current_tag_names = set([tag['name'] for tag in current_tags] if current_tags else [])
-            new_tag_names = set(new_tags)
-            
-            return current_tag_names != new_tag_names
-        except:
-            return True  # 如果比较出错，认为有更改
-    
-    def has_unsaved_changes(self) -> bool:
-        """检查是否有未保存的更改"""
-        if not self.selected_task:
-            return False
-            
-        # 检查必要的组件是否存在
-        if not all([
-            self.title_input, self.description_input, self.due_date_input,
-            self.estimated_pomodoros_input
-        ]):
-            return False
-        
-        # 检查可选组件
-        if not self.priority_select or not self.repeat_select:
-            return False
-        
-        try:
-            # 获取当前表单数据
-            title = self.title_input.value.strip() if self.title_input.value else ''
-            
-            # 处理描述字段
-            description = self.description_input.value.strip() if self.description_input.value else ''
-            original_description = self.selected_task.get('description', '') or ''
-            
-            # 处理截止日期
-            due_date_str = self.due_date_input.value.strip() if self.due_date_input.value else ''
-            due_date = None
-            if due_date_str:
-                try:
-                    due_date = date.fromisoformat(due_date_str)
-                except ValueError:
-                    # 日期格式错误，认为有更改
-                    return True
-            
-            # 处理原始截止日期
-            original_due_date = self.selected_task.get('due_date')
-            if isinstance(original_due_date, str):
-                try:
-                    original_due_date = date.fromisoformat(original_due_date.split()[0])
-                except:
-                    original_due_date = None
-            
-            # 获取优先级和重复周期
-            priority = self.priority_select.value if self.priority_select.value else 'medium'
-            repeat_cycle = self.repeat_select.value if self.repeat_select.value else 'none'
-            
-            # 获取番茄钟数量
-            try:
-                estimated_pomodoros = int(self.estimated_pomodoros_input.value)
-            except:
-                estimated_pomodoros = 1
-            
-            # 标签现在由chip组件管理，直接从selected_task获取
-            current_tags = self.selected_task.get('tags', [])
-            tags = [tag['name'] for tag in current_tags]
-            
-            # 比较各个字段是否有更改
-            title_changed = title != (self.selected_task.get('title', '') or '')
-            description_changed = description != original_description
-            due_date_changed = due_date != original_due_date
-            priority_changed = priority != self.selected_task.get('priority', 'medium')
-            repeat_changed = repeat_cycle != self.selected_task.get('repeat_cycle', 'none')
-            pomodoros_changed = estimated_pomodoros != self.selected_task.get('estimated_pomodoros', 1)
-            tags_changed = self._tags_changed(tags)
-            
-            # 调试输出（可以在开发时启用）
-            # print(f"Debug - Title: '{title}' vs '{self.selected_task.get('title', '')}' = {title_changed}")
-            # print(f"Debug - Description: '{description}' vs '{original_description}' = {description_changed}")
-            # print(f"Debug - Due date: {due_date} vs {original_due_date} = {due_date_changed}")
-            # print(f"Debug - Priority: '{priority}' vs '{self.selected_task.get('priority', 'medium')}' = {priority_changed}")
-            # print(f"Debug - Repeat: '{repeat_cycle}' vs '{self.selected_task.get('repeat_cycle', 'none')}' = {repeat_changed}")
-            # print(f"Debug - Pomodoros: {estimated_pomodoros} vs {self.selected_task.get('estimated_pomodoros', 1)} = {pomodoros_changed}")
-            # print(f"Debug - Tags: {tags_changed}")
-            
-            return (
-                title_changed or
-                description_changed or
-                due_date_changed or
-                priority_changed or
-                repeat_changed or
-                pomodoros_changed or
-                tags_changed
-            )
-            
-        except Exception as e:
-            # 如果检查过程中出现错误，为了安全起见认为没有更改
-            print(f"Error in has_unsaved_changes: {e}")
-            return False
+
 
     def refresh_tags_display(self):
         """刷新标签显示"""
@@ -723,35 +566,7 @@ class TaskDetailComponent:
         else:
             ui.notify('添加标签失败', type='negative')
 
-    def close_with_unsaved_check(self):
-        """关闭前检查是否有未保存的更改"""
-        if self.has_unsaved_changes():
-            def save_and_close():
-                if self.save_task_changes():
-                    self.close_task_detail()
-                dialog.close()
-            
-            def close_without_save():
-                self.close_task_detail()
-                dialog.close()
-            
-            def cancel_close():
-                dialog.close()
-            
-            with ui.dialog() as dialog:
-                with ui.card().classes('w-96'):
-                    with ui.column().classes('w-full gap-4'):
-                        ui.label('有未保存的更改').classes('text-h6 font-bold text-orange-600')
-                        ui.label('您有未保存的更改。您想要保存这些更改吗？')
-                        
-                        with ui.row().classes('w-full justify-end gap-2 mt-4'):
-                            ui.button('取消', on_click=cancel_close).props('flat')
-                            ui.button('不保存', on_click=close_without_save).props('flat color=negative')
-                            ui.button('保存并关闭', on_click=save_and_close).props('color=primary')
-            
-            dialog.open()
-        else:
-            self.close_task_detail()
+
 
     def _on_tag_dialog_success(self):
         """标签对话框成功后的回调"""
@@ -766,3 +581,103 @@ class TaskDetailComponent:
     def show_edit_tag_dialog(self, user_tag: Dict):
         """显示编辑标签对话框"""
         self.tag_edit_dialog.show_edit_dialog(user_tag)
+
+    def auto_save_field(self, field_name: str):
+        """自动保存单个字段"""
+        if not self.selected_task or not self.task_detail_open:
+            return
+        
+        try:
+            # 获取当前字段值
+            current_value = None
+            original_value = None
+            
+            if field_name == 'title':
+                if not self.title_input:
+                    return
+                current_value = self.title_input.value.strip() if self.title_input.value else ''
+                original_value = self.selected_task.get('title', '')
+                if not current_value:
+                    ui.notify('任务标题不能为空', type='warning')
+                    return
+                    
+            elif field_name == 'description':
+                if not self.description_input:
+                    return
+                current_value = self.description_input.value.strip() if self.description_input.value else None
+                original_value = self.selected_task.get('description')
+                
+            elif field_name == 'due_date':
+                if not self.due_date_input:
+                    return
+                due_date_value = self.due_date_input.value
+                current_value = None
+                if due_date_value:
+                    try:
+                        current_value = date.fromisoformat(due_date_value.strip()) if due_date_value.strip() else None
+                    except ValueError:
+                        ui.notify('日期格式不正确', type='warning')
+                        return
+                original_value = self.selected_task.get('due_date')
+                
+            elif field_name == 'priority':
+                if not self.priority_select:
+                    return
+                current_value = self.priority_select.value or 'medium'
+                original_value = self.selected_task.get('priority', 'medium')
+                
+            elif field_name == 'estimated_pomodoros':
+                if not self.estimated_pomodoros_input:
+                    return
+                try:
+                    current_value = int(self.estimated_pomodoros_input.value)
+                    if current_value < 1:
+                        ui.notify('预估番茄钟数量至少为1', type='warning')
+                        return
+                except (ValueError, TypeError):
+                    ui.notify('请输入有效的数字', type='warning')
+                    return
+                original_value = self.selected_task.get('estimated_pomodoros', 1)
+                
+            elif field_name == 'repeat_cycle':
+                if not self.repeat_select:
+                    return
+                current_value = self.repeat_select.value or 'none'
+                original_value = self.selected_task.get('repeat_cycle', 'none')
+            
+            # 检查是否有变化
+            if current_value == original_value:
+                return  # 没有变化，不需要保存
+            
+            # 构建更新参数
+            update_params = {
+                'task_id': self.selected_task['task_id'],
+                field_name: current_value
+            }
+            
+            # 更新数据库
+            success = self.task_manager.update_task(**update_params)
+            
+            if success:
+                # 更新本地数据
+                self.selected_task[field_name] = current_value
+                
+                # 显示保存提示
+                field_display_names = {
+                    'title': '标题',
+                    'description': '描述',
+                    'due_date': '到期日',
+                    'priority': '优先级',
+                    'estimated_pomodoros': '预估番茄钟',
+                    'repeat_cycle': '重复周期'
+                }
+                field_display = field_display_names.get(field_name, field_name)
+                ui.notify(f'{field_display}已保存', type='info', timeout=1500)
+                
+                # 触发界面更新
+                self.on_task_update()
+            else:
+                ui.notify(f'{field_display_names.get(field_name, field_name)}保存失败', type='negative')
+                
+        except Exception as e:
+            ui.notify(f'保存失败: {str(e)}', type='negative')
