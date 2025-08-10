@@ -102,9 +102,17 @@ class MainPage:
             # 右侧任务详情栏（默认隐藏）
             self.task_detail_container = ui.column().classes('task-detail-container task-detail-hidden')
             
-        # 底部番茄钟（固定在主内容区域底部）
+        # 底部番茄钟和声音控制（固定在主内容区域底部）
         self.timer_container = ui.row().classes('timer-mini-container')
-        self.pomodoro_component.create_mini_timer(self.timer_container)
+        with self.timer_container:
+            # 番茄钟计时器
+            self.pomodoro_component.create_mini_timer(ui.element())
+            # 添加全局声音控制按钮
+            self.pomodoro_component.create_sound_control(
+                container=ui.element(),
+                props='flat round size=sm',
+                classes='ml-0'
+            )
         
         # 添加CSS样式
         self.add_css_styles()
@@ -277,6 +285,10 @@ class MainPage:
         if self.sidebar_component:
             self.sidebar_component.refresh_sidebar_tags()
         
+        # 更新番茄钟组件（当设置更新时）
+        if hasattr(self, 'pomodoro_component') and self.pomodoro_component:
+            self.pomodoro_component.on_settings_updated()
+        
         # 更新主内容区域
         if self.main_content_component and self.main_content_container:
             self.main_content_component.update_user_tags(self.user_tags)
@@ -303,4 +315,4 @@ class MainPage:
 
     def set_current_user(self, user: Dict):
         """设置当前用户"""
-        self.current_user = user 
+        self.current_user = user

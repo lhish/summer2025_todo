@@ -122,6 +122,23 @@ class SettingsDialogComponent:
                 min=1, max=10
             ).classes('w-full')
             
+            # 主题选择
+            themes = [
+                {'name': '森林', 'image': 'forest.jpg', 'sound': 'forest.mp3'},
+                #{'name': '火焰', 'image': 'fire.jpg', 'sound': 'fire.mp3'},
+                #{'name': '海岸', 'image': 'coast.jpg', 'sound': 'coast.mp3'},
+                #{'name': '烟花', 'image': 'fireworks.jpg', 'sound': 'fireworks.mp3'}
+            ]
+            
+            current_theme = settings.get('pomodoro_theme', '森林')
+            theme_options = {theme['name']: theme['name'] for theme in themes}
+            
+            theme_select = ui.select(
+                label='番茄钟主题',
+                options=theme_options,
+                value=current_theme
+            ).classes('w-full')
+
             auto_start_next = ui.checkbox(
                 '自动开始下一个番茄钟',
                 value=bool(settings.get('auto_start_next_pomodoro', False))
@@ -140,6 +157,7 @@ class SettingsDialogComponent:
                     'pomodoro_short_break_duration': int(short_break.value),
                     'pomodoro_long_break_duration': int(long_break.value),
                     'pomodoro_long_break_interval': int(long_break_interval.value),
+                    'pomodoro_theme': theme_select.value,
                     'auto_start_next_pomodoro': auto_start_next.value,
                     'auto_start_break': auto_start_break.value
                 })

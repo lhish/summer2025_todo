@@ -30,6 +30,16 @@ class PomodoroTimerComponent:
         self.input_break = None
         self.focus_mode_switch = None
 
+        # 主题相关属性
+        self.themes = [
+            {'name': '火焰', 'image': 'fire.jpg', 'sound': 'fire.mp3'},
+            {'name': '森林', 'image': 'forest.jpg', 'sound': 'forest.mp3'},
+            {'name': '海岸', 'image': 'coast.jpg', 'sound': 'coast.mp3'},
+            {'name': '烟花', 'image': 'fireworks.jpg', 'sound': 'fireworks.mp3'}
+        ]
+        self.current_theme = '森林'
+        self.is_sound_on = False
+
         # 创建通知容器
         self.notification_container = ui.element('div').style('display: none')
 
@@ -39,6 +49,10 @@ class PomodoroTimerComponent:
 
         # 从全局设置中加载番茄钟参数
         self.load_settings()
+
+        # 初始化全局音频控制
+        self.audio = None
+        self.sound_btn = None
 
     def load_settings(self):
         """从全局设置中加载番茄钟参数"""
@@ -56,6 +70,9 @@ class PomodoroTimerComponent:
 
             # 确保正确获取专注模式值
             self.focus_mode = bool(settings.get('focus_mode', False))
+            
+            # 加载主题设置
+            self.current_theme = settings.get('pomodoro_theme', '森林')
 
             # print(
             #    f"加载设置成功: duration={self.duration_minutes}, break={self.break_minutes}, focus_mode={self.focus_mode}")
@@ -65,6 +82,7 @@ class PomodoroTimerComponent:
             self.duration_minutes = 25
             self.break_minutes = 5
             self.focus_mode = False
+            self.current_theme = '森林'
 
     def setup_notification_handler(self):
         """设置通知处理程序"""
@@ -110,61 +128,125 @@ class PomodoroTimerComponent:
                 self.timer_labels.append(label)
                 ui.button(icon='play_arrow', on_click=self.show_timer_dialog).props('flat round size=sm')
 
+    def on_settings_updated(self):
+        """当设置更新时调用此方法"""
+        old_theme = self.current_theme
+        self.load_settings()
+        new_theme = self.current_theme
+        
+        if old_theme != new_theme:
+            print(f"主题已从 {old_theme} 更新为 {new_theme}")
+            # 如果计时器对话框正在显示，立即更新主题
+            if hasattr(self, 'dialog_container') and self.dialog_container:
+                self.change_theme(new_theme)
+
     def show_timer_dialog(self):
         """显示计时器对话框"""
         print("显示计时器对话框")
+        
+        # 始终重新加载设置以确保主题是最新的
+        self.load_settings()
 
-        # 检查设置是否更新
-        if app.storage.user.get('settings_updated', False):
-            # print("检测到设置更新，重新加载设置")
-            self.load_settings()
-            app.storage.user['settings_updated'] = False
-        else:
-            # 即使没有更新标志也重新加载设置
-            # print("强制重新加载设置")
-            self.load_settings()
+        # 获取当前主题的图片
+        current_theme_data = next((t for t in self.themes if t['name'] == self.current_theme), self.themes[0])
+        theme_image = current_theme_data['image']
 
         # 创建全屏对话框
         dialog = ui.dialog().classes('fullscreen')
 
         # 根据专注模式设置属性
         if self.focus_mode:
-            # print("应用专注模式: 禁用关闭操作")
             dialog.props('no-backdrop-dismiss no-esc-dismiss')
         else:
-            # print("正常模式: 允许关闭")
             dialog.props('no-close-on-outside-click')
 
         with dialog:
-            # 使用全屏列布局
-            with ui.column().classes('w-full h-full items-center justify-center bg-primary text-white'):
-                # 添加关闭按钮（绝对定位在左上角）
-                if not self.focus_mode:  # 非专注模式才显示关闭按钮
-                    ui.button(icon='close', on_click=dialog.close).classes('absolute top-4 left-4').props(
-                        'flat round text-white')
+            # 使用全屏列布局，背景设置为当前主题的图片
+            self.dialog_container = ui.column().classes('w-full h-full items-center justify-center').style(
+                f'background-image: url("/static/image/{theme_image}"); '
+                f'background-size: cover; '
+                f'background-position: center; '
+                f'background-repeat: no-repeat;'
+            )
+            with self.dialog_container:
+                # 创建一个70%屏幕大小的容器，带有半透明黑色背景
+                with ui.column().classes('items-center justify-center rounded-lg').style(
+                    'width: 30vw; '
+                    'height: 80vh; '
+                    'background-color: rgba(0, 0, 0, 0.7); '
+                    'backdrop-filter: blur(5px); '
+                    'padding: 2rem;'
+                ):
+                    
+                    # 显示选中的任务标题
+                    if self.selected_task:
+                        ui.label(self.selected_task['title']).classes('text-h5 mb-4 text-white')
+                    else:
+                        ui.label('专注时间').classes('text-h5 mb-4 text-white')
 
-                # 显示选中的任务标题
-                if self.selected_task:
-                    ui.label(self.selected_task['title']).classes('text-h5 mb-4')
-                else:
-                    ui.label('专注时间').classes('text-h5 mb-4')
+                    # 状态标签
+                    self.status_label = ui.label('专注中').classes('text-h6 mb-2 text-white')
 
-                # 状态标签
-                self.status_label = ui.label('专注中').classes('text-h6 mb-2')
+                    # 计时器标签 - 创建新的大字体标签
+                    label = ui.label(f'{self.duration_minutes:02d}:00').classes('text-8xl font-mono mb-8 text-white')
+                    self.timer_labels.append(label)
 
-                # 计时器标签 - 创建新的大字体标签
-                label = ui.label(f'{self.duration_minutes:02d}:00').classes('text-8xl font-mono mb-8')
-                # 添加到标签列表
-                self.timer_labels.append(label)
-
-                # 按钮行 - 居中显示
-                with ui.row().classes('gap-4'):
-                    ui.button('开始', icon='play_arrow', on_click=lambda: self.start_timer()).props(
-                        'size=lg color=white flat')
-                    ui.button('暂停', icon='pause', on_click=self.pause_timer).props('size=lg color=white flat')
-                    ui.button('重置', icon='refresh', on_click=self.reset_timer).props('size=lg color=white flat')
+                    # 按钮行 - 居中显示
+                    with ui.row().classes('gap-4'):
+                        ui.button('开始', icon='play_arrow', on_click=lambda: self.start_timer()).props(
+                            'size=lg color=white flat')
+                        ui.button('暂停', icon='pause', on_click=self.pause_timer).props('size=lg color=white flat')
+                        ui.button('重置', icon='refresh', on_click=self.reset_timer).props('size=lg color=white flat')
 
         dialog.open()
+        
+    def change_theme(self, theme_name):
+        """切换主题"""
+        print(f"切换主题到: {theme_name}")
+        
+        # 更新当前主题
+        self.current_theme = theme_name
+        
+        # 获取主题数据
+        theme = next(t for t in self.themes if t['name'] == theme_name)
+        
+        # 更新背景图片 - 使用正确的容器对象
+        if hasattr(self, 'dialog_container') and self.dialog_container:
+            self.dialog_container.style(f'''
+                background-image: url("/static/image/{theme["image"]}");
+                background-size: cover;
+                background-position: center;
+                background-repeat: no-repeat;
+            ''')
+        
+        # 处理音频播放 - 只在音频开启时更新
+        if self.is_sound_on:
+            try:
+                # 确保音频对象存在
+                if not self.audio:
+                    self.audio = ui.audio(f"/static/sound/{theme['sound']}").classes('hidden')
+                else:
+                    # 更新音频源
+                    self.audio.src = f"/static/sound/{theme['sound']}"
+                
+                # 延迟播放新主题的音频
+                import asyncio
+                asyncio.create_task(self._play_theme_audio(theme['sound']))
+                
+            except Exception as e:
+                print(f"主题切换时播放音频失败: {e}")
+                ui.notify('音频播放需要用户交互，请点击播放按钮', type='info')
+
+    async def _play_theme_audio(self, sound_file):
+        """延迟播放主题音频"""
+        await asyncio.sleep(0.1)  # 小延迟确保音频对象创建完成
+        try:
+            if hasattr(self, 'audio') and self.audio:
+                self.audio.src = f"/static/sound/{sound_file}"
+                self.audio.play()
+                print(f"播放新主题音频: {self.audio.src}")
+        except Exception as e:
+            print(f"延迟播放音频失败: {e}")
 
     def start_timer(self, task_id: Optional[int] = None):
         """启动计时器"""
@@ -423,3 +505,65 @@ class PomodoroTimerComponent:
     def is_timer_running(self) -> bool:
         """检查计时器是否运行中"""
         return self.timer_running
+
+
+    def toggle_sound(self):
+        """切换白噪音开关"""
+        self.is_sound_on = not self.is_sound_on
+        
+        if self.is_sound_on:
+            print("开启白噪音")
+            if self.sound_btn:
+                self.sound_btn.props('icon=volume_up')
+            
+            # 获取当前主题
+            current_theme = next((t for t in self.themes if t['name'] == self.current_theme), self.themes[0])
+            
+            # 确保audio对象存在
+            if not self.audio:
+                self.audio = ui.audio(f"/static/sound/{current_theme['sound']}").classes('hidden')
+            else:
+                # 更新音频源
+                self.audio.src = f"/static/sound/{current_theme['sound']}"
+            
+            # 尝试播放音频
+            try:
+                self.audio.play()
+                print(f"正在播放音频: {self.audio.src}")
+            except Exception as e:
+                print(f"播放音频失败: {e}")
+                #ui.notify('请点击播放按钮开始白噪音', type='info')
+                
+        else:
+            print("关闭白噪音")
+            if self.sound_btn:
+                self.sound_btn.props('icon=volume_off')
+            if self.audio:
+                try:
+                    self.audio.pause()
+                except:
+                    pass
+        
+        print(f"白噪音状态: {'开启' if self.is_sound_on else '关闭'}")
+
+    def create_sound_control(self, container=None, **kwargs):
+        """创建全局声音控制按钮
+        
+        Args:
+            container: 容器对象，如果为None则使用默认容器
+            **kwargs: 额外的props和classes参数
+        """
+        if container is None:
+            container = ui
+            
+        # 合并props和classes
+        props = kwargs.get('props', 'flat round')
+        classes = kwargs.get('classes', 'text-white')
+        
+        with container:
+            self.sound_btn = ui.button(
+                icon='volume_up' if self.is_sound_on else 'volume_off',
+                on_click=self.toggle_sound
+            ).props(props).classes(classes)
+        
+        return self.sound_btn
