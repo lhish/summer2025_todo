@@ -5,11 +5,13 @@
 from nicegui import ui
 from typing import Dict, List, Callable, Optional
 from .tag_edit_dialog import TagEditDialog
+from .ai_panel import AIPanelComponent
 
 
 class SidebarComponent:
     def __init__(self, tag_manager, task_manager, current_user: Dict, on_view_change: Callable, on_logout: Callable, 
-                 on_settings: Callable, on_statistics: Callable = None, on_refresh_ui: Callable = None):
+                 on_settings: Callable, on_statistics: Callable = None, on_refresh_ui: Callable = None, 
+                 ai_assistant = None, statistics_manager = None):
         self.tag_manager = tag_manager
         self.task_manager = task_manager
         self.current_user = current_user
@@ -23,6 +25,7 @@ class SidebarComponent:
         self.user_tags: List[Dict] = []
         self.sidebar_container = None
         self.sidebar_tags_container = None
+        self.ai_panel_container = None
         
         # 初始化标签编辑对话框组件
         self.tag_edit_dialog = TagEditDialog(
@@ -30,6 +33,20 @@ class SidebarComponent:
             on_success=self._on_tag_dialog_success,
             user_id=current_user['user_id']
         )
+        
+        # 初始化AI面板组件
+        if ai_assistant and statistics_manager:
+            try:
+                self.ai_panel = AIPanelComponent(
+                    ai_assistant=ai_assistant,
+                    task_manager=task_manager,
+                    statistics_manager=statistics_manager,
+                    current_user=current_user
+                )
+            except Exception as e:
+                self.ai_panel = None
+        else:
+            self.ai_panel = None
 
         
         # 加载用户标签
@@ -91,6 +108,7 @@ class SidebarComponent:
                             # 收起时：竖直排列居中
                             with ui.column().classes('w-full items-center gap-3'):
                                 ui.button(icon='add', on_click=self.show_create_tag_dialog).props('flat round size=sm')
+                                ui.button(icon='smart_toy', on_click=self.show_ai_panel).props('flat round size=sm')
                                 ui.button(icon='analytics', on_click=self.on_statistics).props('flat round size=sm')
                                 ui.button(icon='settings', on_click=self.on_settings).props('flat round size=sm')
                                 ui.button(icon='logout', on_click=self.on_logout).props('flat round size=sm')
@@ -100,6 +118,7 @@ class SidebarComponent:
                                 ui.button('新建标签', icon='add', on_click=self.show_create_tag_dialog).props('flat').classes('text-sm font-medium')
                                 
                                 with ui.row().classes('gap-2'):
+                                    ui.button(icon='smart_toy', on_click=self.show_ai_panel).props('flat round size=sm')
                                     ui.button(icon='analytics', on_click=self.on_statistics).props('flat round size=sm')
                                     ui.button(icon='settings', on_click=self.on_settings).props('flat round size=sm')
                                     ui.button(icon='logout', on_click=self.on_logout).props('flat round size=sm')
@@ -296,3 +315,67 @@ class SidebarComponent:
             with ui.row().classes('w-full justify-end gap-2'):
                 ui.button('取消', on_click=dialog.close).props('flat')
                 ui.button('完成', on_click=complete_tag).props('color=positive')
+    
+    def show_ai_panel(self):
+        """显示AI功能面板"""
+        if not self.ai_panel:
+            ui.notify('AI功能暂不可用', type='warning')
+            return
+        
+        # 创建AI面板对话框
+        with ui.dialog(value=True) as dialog, ui.card().classes('w-96 max-h-96'):
+            # AI面板标题
+            with ui.row().classes('w-full p-4 items-center gap-3'):
+                ui.icon('smart_toy').classes('text-2xl text-blue-6')
+                ui.label('AI智能助手').classes('text-lg font-medium')
+                ui.button(icon='close', on_click=dialog.close).props('flat round').classes('ml-auto')
+            
+            ui.separator()
+            
+            # AI功能按钮 - 横向排列
+            with ui.row().classes('w-full p-4 gap-2'):
+                # 智能任务推荐
+                def set_task_recommendation_mode():
+                    self.ai_panel.set_ai_mode('task_recommendation', dialog)
+                
+                ui.button('智能任务推荐', icon='recommend', on_click=set_task_recommendation_mode).props('flat color=blue').classes('flex-1 text-xs')
+                
+                # 工作量预估
+                def set_workload_estimation_mode():
+                    self.ai_panel.set_ai_mode('workload_estimation', dialog)
+                
+                ui.button('工作量预估', icon='schedule', on_click=set_workload_estimation_mode).props('flat color=green').classes('flex-1 text-xs')
+                
+                # 效能分析报告
+                def set_efficiency_report_mode():
+                    self.ai_panel.set_ai_mode('efficiency_report', dialog)
+                
+                ui.button('效能分析', icon='analytics', on_click=set_efficiency_report_mode).props('flat color=purple').classes('flex-1 text-xs')
+                
+                # 工作模式分析
+                def set_work_pattern_mode():
+                    self.ai_panel.set_ai_mode('work_pattern', dialog)
+                
+                ui.button('工作模式', icon='psychology', on_click=set_work_pattern_mode).props('flat color=orange').classes('flex-1 text-xs')
+            
+            ui.separator()
+            
+            # 聊天界面
+            with ui.column().classes('w-full p-4 flex-1'):
+                # 聊天记录显示区域
+                chat_area = ui.scroll_area().classes('w-full h-64 mb-4 border rounded p-2')
+                dialog.chat_area = chat_area
+                
+                # 输入区域
+                with ui.row().classes('w-full gap-2'):
+                    message_input = ui.input('输入您的问题...').classes('flex-1')
+                    dialog.message_input = message_input
+                    
+                    def send_message():
+                        self.ai_panel.send_message(dialog)
+                    
+                    ui.button('发送', icon='send', on_click=send_message).props('color=primary')
+                
+                # 当前模式显示
+                mode_label = ui.label('当前模式: 通用助手').classes('text-xs text-grey-6 mt-2')
+                dialog.mode_label = mode_label

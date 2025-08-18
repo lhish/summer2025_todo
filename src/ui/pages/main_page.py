@@ -133,7 +133,9 @@ class MainPage:
             self.handle_logout,
             self.show_settings,
             self.show_statistics,
-            self.refresh_and_update_ui
+            self.refresh_and_update_ui,
+            self.ai_assistant,
+            self.statistics_manager
         )
         
         # 任务列表组件

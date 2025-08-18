@@ -21,7 +21,7 @@ AI_CONFIG = {
     'api_key': os.getenv('OPENAI_API_KEY', ''),
     'base_url': os.getenv('OPENAI_BASE_URL', ''),
     'model': os.getenv('OPENAI_MODEL', ''),
-    'max_tokens': 1000,
+    'max_tokens': 2000,  # 增加token限制，避免回复被截断
     'temperature': 0.7
 }
 
