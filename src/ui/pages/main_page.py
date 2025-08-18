@@ -176,6 +176,7 @@ class MainPage:
         self.settings_component = SettingsDialogComponent(
             self.settings_manager,
             self.current_user,
+            self.user_manager,  # 传入用户管理器
             self.handle_logout,
             self.refresh_and_update_ui
         )

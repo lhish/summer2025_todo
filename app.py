@@ -42,7 +42,7 @@ main_page = MainPage(
     db_manager, user_manager, tag_manager, task_manager,
     pomodoro_manager, settings_manager, ai_assistant, statistics_manager
 )
-settings_page = SettingsPage(settings_manager)
+settings_page = SettingsPage(settings_manager, user_manager)
 
 def handle_login_success(user):
     """处理登录成功"""

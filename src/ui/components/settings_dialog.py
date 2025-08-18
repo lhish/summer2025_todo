@@ -7,9 +7,10 @@ from typing import Dict, Callable
 
 
 class SettingsDialogComponent:
-    def __init__(self, settings_manager, current_user: Dict, on_logout: Callable = None, on_settings_updated: Callable = None):
+    def __init__(self, settings_manager, current_user: Dict, user_manager, on_logout: Callable = None, on_settings_updated: Callable = None):
         self.settings_manager = settings_manager
         self.current_user = current_user
+        self.user_manager = user_manager  # 使用传入的用户管理器
         self.on_logout = on_logout
         self.on_settings_updated = on_settings_updated
         self.current_section = '番茄钟'  # 默认选中的分类
@@ -320,9 +321,32 @@ class SettingsDialogComponent:
             ui.notify('新密码长度至少为6位', type='warning')
             return
 
-        # 这里需要实现密码修改逻辑
-        ui.notify('密码修改功能需要额外实现', type='info')
-        dialog.close()
+        try:
+            result = self.user_manager.change_password(
+                self.current_user['user_id'],
+                old_password,
+                new_password
+            )
+            
+            if result['success']:
+                ui.notify('密码修改成功', type='positive')
+                dialog.close()
+            else:
+                error = result.get('error', 'unknown')
+                if error == 'wrong_old_password':
+                    ui.notify('当前密码不正确', type='negative')
+                elif error == 'same_password':
+                    ui.notify('新密码不能与当前密码相同', type='warning')
+                elif error == 'user_not_found':
+                    ui.notify('用户不存在', type='negative')
+                elif error == 'database_error':
+                    ui.notify('数据库更新失败，请重试', type='negative')
+                else:
+                    message = result.get('message', '未知错误')
+                    ui.notify(f'密码修改失败: {message}', type='negative')
+                
+        except Exception as e:
+            ui.notify(f'密码修改失败: {str(e)}', type='negative')
 
     def export_user_data(self):
         """导出用户数据"""

@@ -108,6 +108,38 @@ class UserManager:
         """验证密码"""
         return bcrypt.checkpw(password.encode('utf-8'), hashed.encode('utf-8'))
     
+    def change_password(self, user_id: int, old_password: str, new_password: str) -> Dict[str, Any]:
+        """修改用户密码，返回详细的结果信息"""
+        try:
+            # 获取用户当前密码哈希
+            user = self.get_user_by_id(user_id)
+            if not user:
+                return {'success': False, 'error': 'user_not_found'}
+            
+            # 验证旧密码
+            if not self.verify_password(old_password, user['password_hash']):
+                return {'success': False, 'error': 'wrong_old_password'}
+            
+            # 检查新密码是否与旧密码相同
+            if self.verify_password(new_password, user['password_hash']):
+                return {'success': False, 'error': 'same_password'}
+            
+            # 生成新密码哈希
+            new_password_hash = self.hash_password(new_password)
+            
+            # 更新数据库
+            query = "UPDATE users SET password_hash = %s WHERE user_id = %s"
+            update_success = self.db.execute_update(query, (new_password_hash, user_id))
+            
+            if update_success:
+                return {'success': True}
+            else:
+                return {'success': False, 'error': 'database_error'}
+            
+        except Exception as e:
+            logger.error(f"修改密码失败: {e}")
+            return {'success': False, 'error': 'exception', 'message': str(e)}
+    
     def create_user(self, email: str, password: str) -> Optional[int]:
         """创建新用户"""
         # 检查邮箱是否已存在
@@ -281,4 +313,4 @@ class TagManager:
             SELECT task_id FROM task_tags WHERE tag_id = %s
         ) AND status = 'pending'
         """
-        return self.db.execute_update(query, (tag_id,)) 
+        return self.db.execute_update(query, (tag_id,))
