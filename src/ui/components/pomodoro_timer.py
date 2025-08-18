@@ -169,10 +169,10 @@ class PomodoroTimerComponent:
                 f'background-repeat: no-repeat;'
             )
             with self.dialog_container:
-                # 创建一个70%屏幕大小的容器，带有半透明黑色背景
+                # 创建一个固定大小的容器，带有半透明黑色背景
                 with ui.column().classes('items-center justify-center rounded-lg').style(
-                    'width: 30vw; '
-                    'height: 80vh; '
+                    'width: 500px; '
+                    'height: 600px; '
                     'background-color: rgba(0, 0, 0, 0.7); '
                     'backdrop-filter: blur(5px); '
                     'padding: 2rem;'
@@ -185,7 +185,8 @@ class PomodoroTimerComponent:
                         ui.label('专注时间').classes('text-h5 mb-4 text-white')
 
                     # 状态标签
-                    self.status_label = ui.label('专注中').classes('text-h6 mb-2 text-white')
+                    status_text = '休息中' if self.in_break else '专注中'
+                    self.status_label = ui.label(status_text).classes('text-h6 mb-2 text-white')
 
                     # 计时器标签 - 创建新的大字体标签
                     label = ui.label(f'{self.duration_minutes:02d}:00').classes('text-8xl font-mono mb-8 text-white')
@@ -197,8 +198,53 @@ class PomodoroTimerComponent:
                             'size=lg color=white flat')
                         ui.button('暂停', icon='pause', on_click=self.pause_timer).props('size=lg color=white flat')
                         ui.button('重置', icon='refresh', on_click=self.reset_timer).props('size=lg color=white flat')
+                        # 调试按钮 - 仅在开发环境中显示
+                        ui.button('调试', icon='bug_report', on_click=self.debug_timer).props('size=lg color=red flat')
 
         dialog.open()
+        
+        # 立即启动计时器
+        self.start_timer()
+        
+    def show_task_selection_dialog(self):
+        """显示任务选择对话框"""
+        # 获取当前用户的所有任务
+        if not self.current_user or not self.task_manager:
+            ui.notify('无法获取任务列表', type='negative')
+            return
+            
+        tasks = self.task_manager.get_tasks(self.current_user['user_id'], status='pending')
+        
+        # 创建任务选择对话框
+        dialog = ui.dialog()
+        with dialog:
+            with ui.card().classes('w-96').style('text-align: center;'):
+                ui.label('请选择一个任务开始专注').classes('text-h6 w-full text-center')
+                
+                # 为每个任务创建一个按钮，使用纵向滚动容器
+                if tasks:
+                    with ui.column().classes('w-full max-h-96 overflow-y-auto'):
+                        for task in tasks:
+                            task_title = task.get('title', '未命名任务')
+                            ui.button(task_title, on_click=lambda t=task: self.select_task_and_start(t)).classes('w-full mb-2').style('text-align: center; height: auto; white-space: normal;')
+                else:
+                    ui.label('暂无可用任务').classes('text-gray-500 w-full text-center')
+                    ui.button('关闭', on_click=dialog.close).classes('mt-4 w-full').style('text-align: center;')
+        
+        dialog.open()
+        
+    def select_task_and_start(self, task):
+        """选择任务并开始计时"""
+        self.selected_task = task
+        # 关闭所有打开的对话框
+        ui.run_javascript('''
+            const dialogs = document.querySelectorAll('.q-dialog');
+            dialogs.forEach(dialog => {
+                dialog.__vueParentComponent?.exposed?.hide?.();
+            });
+        ''')
+        # 启动计时器
+        self.start_timer()
         
     def change_theme(self, theme_name):
         """切换主题"""
@@ -256,6 +302,12 @@ class PomodoroTimerComponent:
         if self.timer_running:
             return  # 避免重复点击
 
+        # 检查是否已选定任务
+        if not self.selected_task and task_id is None:
+            # 显示任务选择对话框
+            self.show_task_selection_dialog()
+            return
+
         # 如果通过任务启动，使用任务提供的task_id
         if task_id is not None:
             task = self.task_manager.get_task_by_id(task_id)
@@ -309,6 +361,10 @@ class PomodoroTimerComponent:
             # 保存剩余时间以便恢复
             self.paused_remaining = self.active_session['remaining']
             print(f"计时器已暂停，剩余时间: {self.paused_remaining}秒")
+            
+            # 更新状态标签
+            if self.status_label:
+                self.status_label.text = '暂停'
 
             ui.notify('计时已暂停', type='info')
 
@@ -329,10 +385,19 @@ class PomodoroTimerComponent:
 
         self.update_timer_display(self.duration_minutes * 60)
         if self.status_label:
-            self.status_label.text = '专注中'
+            self.status_label.text = '暂停'
 
         ui.notify('计时器已重置', type='info')
         print("计时器已重置")
+
+    def debug_timer(self):
+        """调试计时器，将当前阶段的剩余时间修改为2秒"""
+        if self.active_session:
+            self.active_session['remaining'] = 2
+            self.update_timer_display(self.active_session['remaining'])
+            #ui.notify('调试模式：剩余时间已设置为2秒', type='info')
+        else:
+            ui.notify('没有活跃的计时器会话', type='warning')
 
     async def run_timer(self):
         """运行计时器循环"""
@@ -374,6 +439,15 @@ class PomodoroTimerComponent:
 
     async def complete_phase(self):
         """完成当前阶段（专注或休息）"""
+        # 获取用户设置
+        user_settings = {}
+        if self.settings_manager and self.current_user:
+            user_settings = self.settings_manager.get_user_settings(self.current_user['user_id']) or {}
+        
+        # 获取自动开始设置，默认为False
+        auto_start_break = user_settings.get('auto_start_break', False)
+        auto_start_next_pomodoro = user_settings.get('auto_start_next_pomodoro', False)
+        
         if self.active_session and self.active_session['phase'] == "focus":
             # 专注阶段完成
             print(">>> 专注阶段完成")
@@ -397,19 +471,32 @@ class PomodoroTimerComponent:
             # 设置休息阶段
             self.in_break = True
             if self.status_label:
-                self.status_label.text = '休息中'
+                self.status_label.text = '准备休息（点击按钮开始计时）'
 
-            # 创建休息会话
-            self.active_session = {
-                'task_id': None,
-                'start_time': datetime.now(),
-                'duration': self.break_minutes * 60,
-                'remaining': self.break_minutes * 60,
-                'phase': "break",
-            }
+            # 检查是否自动开始休息
+            if auto_start_break:
+                # 创建休息会话
+                self.active_session = {
+                    'task_id': None,
+                    'start_time': datetime.now(),
+                    'duration': self.break_minutes * 60,
+                    'remaining': self.break_minutes * 60,
+                    'phase': "break",
+                }
 
-            # 更新UI显示休息时间
-            self.update_timer_display(self.active_session['remaining'])
+                # 更新UI显示休息时间
+                self.update_timer_display(self.active_session['remaining'])
+                
+                # 重新启动计时器
+                self.timer_running = True
+                self.timer_task = asyncio.create_task(self.run_timer())
+            else:
+                # 不自动开始休息，停止计时器
+                self.timer_running = False
+                self.active_session = None
+                self.timer_task = None
+                # 提示用户手动点击“开始”按钮开始休息计时
+                ui.notify('请手动点击“开始”按钮开始休息计时', type='info')
 
         elif self.active_session and self.active_session['phase'] == "break":
             # 休息阶段完成
@@ -418,13 +505,39 @@ class PomodoroTimerComponent:
 
             # 重置状态
             self.in_break = False
-            self.active_session = None
-            self.timer_running = False
+            
+            # 检查是否自动开始下一个番茄钟
+            if auto_start_next_pomodoro:
+                # 创建新的专注会话
+                self.active_session = {
+                    'task_id': self.active_session.get('task_id'),
+                    'start_time': datetime.now(),
+                    'duration': self.duration_minutes * 60,
+                    'remaining': self.duration_minutes * 60,
+                    'phase': "focus",
+                }
+                
+                if self.status_label:
+                    self.status_label.text = '专注中'
+                
+                # 更新UI显示专注时间
+                self.update_timer_display(self.active_session['remaining'])
+                
+                # 重新启动计时器
+                self.timer_running = True
+                self.timer_task = asyncio.create_task(self.run_timer())
+            else:
+                # 不自动开始下一个番茄钟，停止计时器
+                self.active_session = None
+                self.timer_running = False
+                self.timer_task = None
 
-            # 更新UI显示专注时间
-            self.update_timer_display(self.duration_minutes * 60)
-            if self.status_label:
-                self.status_label.text = '专注中'
+                # 更新UI显示专注时间
+                self.update_timer_display(self.duration_minutes * 60)
+                if self.status_label:
+                    self.status_label.text = '专注中'
+                # 提示用户手动点击“开始”按钮开始下一个番茄钟
+                ui.notify('请手动点击“开始”按钮开始下一个番茄钟', type='info')
 
     def show_settings_dialog(self):
         """显示设置对话框"""
