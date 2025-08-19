@@ -212,6 +212,10 @@ class MainPage:
         """视图切换回调"""
         self.current_view = view_type
         
+        # 更新任务详情组件的当前视图
+        if hasattr(self, 'task_detail_component') and self.task_detail_component:
+            self.task_detail_component.set_current_view(view_type)
+        
         # 先更新用户数据（包括标签信息）
         self.load_user_data()
         

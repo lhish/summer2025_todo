@@ -18,6 +18,7 @@ class TaskDetailComponent:
         self.selected_task: Optional[Dict] = None
         self.initial_task_state: Optional[Dict] = None  # 保存初始状态
         self.task_detail_open = False
+        self.current_view = None  # 跟踪当前视图
         
         # UI 组件引用
         self.title_input = None
@@ -35,6 +36,10 @@ class TaskDetailComponent:
             on_success=self._on_tag_dialog_success,
             user_id=user_id
         )
+
+    def set_current_view(self, view_type: str):
+        """设置当前视图类型"""
+        self.current_view = view_type
 
     def create_task_detail_panel(self, container):
         """创建任务详情面板"""
@@ -175,6 +180,9 @@ class TaskDetailComponent:
                             ).props('type=date borderless').classes('flex-1 min-w-0')
                             # 添加失去焦点时自动保存
                             self.due_date_input.on('blur', lambda: self.auto_save_field('due_date'))
+                            
+                            # 添加清除截止日期按钮
+                            ui.button(icon='clear', on_click=self.clear_due_date).props('flat round dense color=grey size=sm').tooltip('清除截止日期')
                         
                         # 重复周期（可编辑）
                         with ui.row().classes('w-full items-center gap-2 sm:gap-3'):
@@ -268,6 +276,41 @@ class TaskDetailComponent:
         self.repeat_select = None
         
         self.on_close()
+
+    def clear_due_date(self):
+        """清除截止日期"""
+        if not self.selected_task or not self.task_detail_open:
+            ui.notify('无法清除截止日期：没有选中的任务', type='warning')
+            return
+        
+        try:
+            # 清空输入框
+            if self.due_date_input:
+                self.due_date_input.value = ''
+            
+            # 保存到数据库，传递当前视图信息
+            task_id = self.selected_task['task_id']
+            result = self.task_manager.update_task(
+                task_id=task_id,
+                due_date=None,
+                current_view=self.current_view
+            )
+            
+            if result.get('success', False):
+                self.selected_task['due_date'] = None
+                ui.notify('截止日期已清除', type='positive', timeout=1500)
+                
+                # 检查是否需要显示视图变更通知
+                view_change = result.get('view_change')
+                if view_change and view_change.get('should_remove'):
+                    ui.notify(view_change['notification'], type='info', timeout=3000)
+                
+                self.on_task_update()
+            else:
+                ui.notify('清除截止日期失败：数据库更新失败', type='negative')
+                
+        except Exception as e:
+            ui.notify(f'清除截止日期失败：{str(e)}', type='negative')
 
 
 
@@ -595,12 +638,14 @@ class TaskDetailComponent:
                 elif field_name == 'due_date':
                     if not self.due_date_input: return
                     due_date_str = self.due_date_input.value
-                    if due_date_str:
+                    if due_date_str and due_date_str.strip():
                         try:
-                            current_value = date.fromisoformat(due_date_str.strip()) if due_date_str.strip() else None
+                            current_value = date.fromisoformat(due_date_str.strip())
                         except ValueError:
                             ui.notify('日期格式不正确', type='warning')
                             return
+                    else:
+                        current_value = None  # 空值表示清除截止日期
                 elif field_name == 'estimated_pomodoros':
                     if not self.estimated_pomodoros_input: return
                     try:
@@ -624,12 +669,13 @@ class TaskDetailComponent:
             # 构建并执行更新
             update_params = {
                 'task_id': self.selected_task['task_id'],
-                field_name: current_value
+                field_name: current_value,
+                'current_view': self.current_view  # 传递当前视图信息
             }
             
-            success = self.task_manager.update_task(**update_params)
+            result = self.task_manager.update_task(**update_params)
             
-            if success:
+            if result.get('success', False):
                 self.selected_task[field_name] = current_value
                 field_display_names = {
                     'title': '标题', 'description': '描述', 'due_date': '到期日',
@@ -637,6 +683,12 @@ class TaskDetailComponent:
                 }
                 field_display = field_display_names.get(field_name, field_name)
                 ui.notify(f'{field_display}已保存', type='info', timeout=1500, position='top')
+                
+                # 检查是否需要显示视图变更通知
+                view_change = result.get('view_change')
+                if view_change and view_change.get('should_remove'):
+                    ui.notify(view_change['notification'], type='info', timeout=3000)
+                
                 self.on_task_update()
             else:
                 ui.notify(f'保存失败', type='negative')

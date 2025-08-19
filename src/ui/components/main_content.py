@@ -21,7 +21,7 @@ class MainContentComponent:
         with container:
             with ui.column().classes('w-full p-6'):
                 # 页面标题
-                title = '任务'  # 默认标题
+                title = '所有任务'  # 默认标题
                 
                 if current_view.startswith('tag_'):
                     # 标签视图：显示标签名称
@@ -33,12 +33,12 @@ class MainContentComponent:
                 else:
                     # 默认视图
                     view_titles = {
-                        'my_day': '我的一天',
-                        'planned': '计划内',
+                        'my_day': '今天截止',
+                        'planned': '即将截止',
                         'important': '重要',
-                        'all': '任务'
+                        'all': '所有任务'
                     }
-                    title = view_titles.get(current_view, '任务')
+                    title = view_titles.get(current_view, '所有任务')
                 
                 ui.label(title).classes('text-h4 font-bold mb-4')
                 

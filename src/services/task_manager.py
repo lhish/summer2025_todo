@@ -180,7 +180,7 @@ class TaskManager:
         today = date.today()
         
         if view_type == 'my_day':
-            # 我的一天：今天到期的任务 + 过期未完成的任务
+            # 今天截止：今天到期的任务 + 过期未完成的任务
             return self.get_tasks(
                 user_id=user_id,
                 status='pending',
@@ -192,14 +192,21 @@ class TaskManager:
             )
         
         elif view_type == 'planned':
-            # 计划内：有截止日期的任务
+            # 即将截止：未来7天内到期的任务（不包括今天和过期的）
+            today = date.today()
+            days_ahead = 7  # 即将截止定义为7天
+            future_date = today + timedelta(days=days_ahead)
+            
             query = """
             SELECT t.*
             FROM tasks t
-            WHERE t.user_id = %s AND t.due_date IS NOT NULL
+            WHERE t.user_id = %s 
+                AND t.due_date > %s 
+                AND t.due_date <= %s
+                AND t.status = 'pending'
             ORDER BY t.due_date ASC
             """
-            tasks = self.db.execute_query(query, (user_id,))
+            tasks = self.db.execute_query(query, (user_id, today, future_date))
             
         elif view_type == 'important':
             # 重要：高优先级任务
@@ -228,6 +235,89 @@ class TaskManager:
         
         return tasks or []
     
+    def get_upcoming_days_setting(self) -> int:
+        """获取即将截止的天数设置"""
+        return 7  # 默认7天
+    
+    def should_remove_from_my_day(self, task_id: int, new_due_date) -> bool:
+        """
+        检查任务是否应该从"今天截止"视图中移除
+        
+        Args:
+            task_id: 任务ID
+            new_due_date: 新的截止日期（可能是None或date对象）
+            
+        Returns:
+            如果应该移除返回True，否则返回False
+        """
+        today = date.today()
+        
+        # 如果新的截止日期为空，不符合"今天截止"条件
+        if new_due_date is None:
+            return True
+        
+        # 如果新的截止日期不是今天也不是过期日期，应该移除
+        if isinstance(new_due_date, date):
+            if new_due_date != today and new_due_date >= today:
+                return True
+        elif isinstance(new_due_date, str):
+            try:
+                due_date_obj = date.fromisoformat(new_due_date.split()[0])
+                if due_date_obj != today and due_date_obj >= today:
+                    return True
+            except:
+                return True
+        
+        return False
+    
+    def check_and_notify_view_change(self, task_id: int, old_due_date, new_due_date, current_view: str) -> Dict:
+        """
+        检查任务截止日期更改后是否需要从当前视图中移除，并返回通知信息
+        
+        Args:
+            task_id: 任务ID  
+            old_due_date: 旧的截止日期
+            new_due_date: 新的截止日期
+            current_view: 当前视图类型
+            
+        Returns:
+            包含是否需要移除和通知信息的字典
+        """
+        result = {
+            'should_remove': False,
+            'notification': None,
+            'suggested_view': None
+        }
+        
+        if current_view == 'my_day':
+            if self.should_remove_from_my_day(task_id, new_due_date):
+                result['should_remove'] = True
+                
+                # 确定建议的视图
+                if new_due_date is None:
+                    result['suggested_view'] = 'all'
+                    result['notification'] = '任务已从"今天截止"中移除，因为截止日期已清除。可在"所有任务"中查看。'
+                else:
+                    today = date.today()
+                    try:
+                        if isinstance(new_due_date, str):
+                            due_date_obj = date.fromisoformat(new_due_date.split()[0])
+                        else:
+                            due_date_obj = new_due_date
+                        
+                        days_diff = (due_date_obj - today).days
+                        if days_diff <= 7:
+                            result['suggested_view'] = 'planned'
+                            result['notification'] = f'任务已从"今天截止"中移除，因为截止日期已更改。可在"即将截止"中查看。'
+                        else:
+                            result['suggested_view'] = 'all'
+                            result['notification'] = f'任务已从"今天截止"中移除，因为截止日期已更改。可在"所有任务"中查看。'
+                    except:
+                        result['suggested_view'] = 'all'
+                        result['notification'] = '任务已从"今天截止"中移除，因为截止日期已更改。可在"所有任务"中查看。'
+        
+        return result
+    
     def get_task_by_id(self, task_id: int) -> Optional[Dict]:
         """根据ID获取任务详情"""
         try:
@@ -253,11 +343,12 @@ class TaskManager:
                    task_id: int,
                    title: str = None,
                    description: str = None,
-                   due_date: date = None,
+                   due_date = 'UNSET',  # 使用特殊值来区分None和未设置
                    priority: str = None,
                    estimated_pomodoros: int = None,
                    repeat_cycle: str = None,
-                   tags: List[str] = None) -> bool:
+                   tags: List[str] = None,
+                   current_view: str = None) -> Dict:  # 返回更详细的信息
         """
         更新任务
         
@@ -270,11 +361,16 @@ class TaskManager:
             estimated_pomodoros: 预估番茄钟数量
             repeat_cycle: 重复周期 (none, daily, weekly, monthly)
             tags: 标签列表
+            current_view: 当前视图类型，用于检查是否需要从视图中移除任务
             
         Returns:
-            更新是否成功
+            包含更新结果和视图变更信息的字典
         """
         try:
+            # 获取任务更新前的状态
+            old_task = self.get_task_by_id(task_id) if current_view else None
+            old_due_date = old_task.get('due_date') if old_task else None
+            
             # 构建更新语句
             updates = []
             params = []
@@ -287,9 +383,10 @@ class TaskManager:
                 updates.append("description = %s")
                 params.append(description)
             
-            if due_date is not None:
+            if due_date != 'UNSET':  # 允许设置为None来清除日期
                 updates.append("due_date = %s")
                 params.append(due_date)
+                logger.info(f"更新截止日期: {due_date}")
             
             if priority is not None:
                 updates.append("priority = %s")
@@ -306,7 +403,7 @@ class TaskManager:
                 params.append(repeat_cycle)
             
             if not updates and tags is None:
-                return True
+                return {'success': True, 'view_change': None}
             
             # 更新任务基本信息
             if updates:
@@ -314,8 +411,11 @@ class TaskManager:
                 params.append(task_id)
                 
                 query = f"UPDATE tasks SET {', '.join(updates)} WHERE task_id = %s"
+                logger.info(f"执行SQL更新: {query} with params: {params}")
+                
                 if not self.db.execute_update(query, tuple(params)):
-                    return False
+                    logger.error(f"数据库更新失败: task_id={task_id}")
+                    return {'success': False, 'view_change': None}
             
             # 更新标签
             if tags is not None:
@@ -324,12 +424,19 @@ class TaskManager:
                 if task:
                     self._update_task_tags(task_id, task['user_id'], tags)
             
+            # 检查视图变更
+            view_change_info = None
+            if current_view and due_date != 'UNSET':
+                view_change_info = self.check_and_notify_view_change(
+                    task_id, old_due_date, due_date, current_view
+                )
+            
             logger.info(f"任务更新成功: {task_id}")
-            return True
+            return {'success': True, 'view_change': view_change_info}
             
         except Exception as e:
             logger.error(f"更新任务失败: {e}")
-            return False
+            return {'success': False, 'view_change': None}
     
     def delete_task(self, task_id: int) -> bool:
         """删除任务"""

@@ -6,18 +6,112 @@ body {
     height: 100vh;
 }
 
+/* 侧边栏展开状态的精确控制 */
 .sidebar-container {
-    width: 280px;
-    min-width: 280px;
+    width: 300px;
+    min-width: 300px;
     background: white;
     border-right: 1px solid #e0e0e0;
-    transition: all 0.3s ease;
+    transition: width 0.3s ease, min-width 0.3s ease;
     overflow: hidden;
+    position: relative;
 }
 
+/* 三种状态的宽度控制 */
 .sidebar-collapsed {
     width: 70px !important;
     min-width: 70px !important;
+}
+
+.sidebar-expanding {
+    width: 300px !important;
+    min-width: 300px !important;
+}
+
+.sidebar-expanded {
+    width: 300px !important;
+    min-width: 300px !important;
+}
+
+/* 侧边栏内容的过渡动画 */
+.sidebar-container .q-btn__content {
+    transition: opacity 0.2s ease;
+}
+
+/* 确保文本在收缩状态下正确隐藏 */
+.sidebar-collapsed .truncate {
+    opacity: 0;
+    transform: scale(0.8);
+    width: 0;
+    overflow: hidden;
+}
+
+/* 确保图标在收缩状态下居中显示 */
+.sidebar-collapsed .flex-shrink-0 {
+    margin: 0 auto;
+}
+
+/* 侧边栏内部布局优化 */
+.sidebar-container .flex {
+    height: 100%;
+    overflow: hidden;
+}
+
+.sidebar-container .flex-1 {
+    overflow: hidden;
+    min-height: 0;
+}
+
+/* 按钮文本在展开过程中的控制 */
+.sidebar-container .q-btn .q-btn__content .block {
+    transition: opacity 0.1s ease;
+}
+
+/* 标签和按钮文本的展开控制 */
+.sidebar-container .truncate,
+.sidebar-container .q-btn__content {
+    transition: opacity 0.2s ease;
+}
+
+/* 展开中状态 - 隐藏所有文本内容 */
+.sidebar-expanding .truncate,
+.sidebar-expanding .q-btn__content .block,
+.sidebar-expanding .text-sm,
+.sidebar-expanding .q-btn__content span {
+    opacity: 0 !important;
+    pointer-events: none;
+    width: 0 !important;
+    overflow: hidden !important;
+}
+
+/* 展开中状态 - 保持图标显示但隐藏文本 */
+.sidebar-expanding .q-icon {
+    opacity: 1 !important;
+}
+
+/* 完全展开状态 - 显示文本 */
+.sidebar-expanded .truncate,
+.sidebar-expanded .q-btn__content .block,
+.sidebar-expanded .text-sm,
+.sidebar-expanded .q-btn__content span {
+    opacity: 1 !important;
+    transition: opacity 0.3s ease 0.1s;
+    pointer-events: auto;
+    width: auto !important;
+    overflow: visible !important;
+}
+
+/* 折叠状态保持文本隐藏 */
+.sidebar-collapsed .truncate,
+.sidebar-collapsed .q-btn__content .block,
+.sidebar-collapsed .text-sm,
+.sidebar-collapsed .q-btn__content span {
+    opacity: 0 !important;
+    width: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    pointer-events: none;
+    overflow: hidden !important;
 }
 
 .task-detail-container {
@@ -93,6 +187,96 @@ body {
 
 .tag-item-container:hover .tag-menu-button {
     opacity: 1;
+}
+
+/* 文本截断样式 */
+.truncate {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+    flex-shrink: 1;
+}
+
+/* 确保侧边栏中的文字不被压缩 */
+.sidebar-container .q-item__section {
+    min-width: 0;
+}
+
+/* 侧边栏展开时的文本样式 */
+.sidebar-container:not(.sidebar-collapsed) .truncate {
+    opacity: 1;
+    transform: none;
+    transition: opacity 0.3s ease 0.1s;
+}
+
+/* 侧边栏折叠时立即隐藏文本 */
+.sidebar-collapsed .truncate {
+    opacity: 0 !important;
+    width: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+/* 标签项布局优化 */
+.tag-item-container {
+    transition: all 0.2s ease;
+    border-right: 3px solid transparent;
+    min-height: 36px;
+}
+
+.tag-item-container .flex-1 {
+    min-width: 0;
+    overflow: hidden;
+}
+
+/* 侧边栏底部用户信息样式 */
+.sidebar-container .user-info {
+    border-top: 1px solid #e0e0e0;
+    background: #f8f9fa;
+    transition: all 0.3s ease;
+}
+
+/* 侧边栏按钮样式优化 */
+.sidebar-container .q-btn {
+    transition: all 0.2s ease;
+    min-width: 36px;
+}
+
+.sidebar-collapsed .q-btn .q-btn__content {
+    opacity: 1;
+}
+
+/* 展开状态下的新建标签按钮优化 */
+.sidebar-container:not(.sidebar-collapsed) .q-btn--flat {
+    min-height: 32px;
+}
+
+/* 工具提示样式 */
+.q-tooltip {
+    font-size: 12px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+}
+
+/* 用户头像样式 */
+.user-avatar {
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* 底部按钮区域样式 */
+.sidebar-container .bottom-actions {
+    background: white;
+    border-top: 1px solid #f0f0f0;
+}
+
+/* 确保按钮在折叠状态下居中对齐 */
+.sidebar-collapsed .bottom-actions .q-btn {
+    width: 36px;
+    height: 36px;
 }
 
 .sidebar-toggle-row {
