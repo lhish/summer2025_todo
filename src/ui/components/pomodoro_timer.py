@@ -127,12 +127,24 @@ class PomodoroTimerComponent:
                 label = ui.label(f'{self.duration_minutes:02d}:00').classes('font-mono text-lg')
                 self.timer_labels.append(label)
                 ui.button(icon='play_arrow', on_click=self.show_timer_dialog).props('flat round size=sm')
+    
+    def update_mini_timer_display(self):
+        """更新底部迷你计时器显示"""
+        # 更新所有已创建的计时器标签
+        for label in self.timer_labels:
+            label.text = f'{self.duration_minutes:02d}:00'
 
     def on_settings_updated(self):
         """当设置更新时调用此方法"""
         old_theme = self.current_theme
+        old_duration = self.duration_minutes
         self.load_settings()
         new_theme = self.current_theme
+        new_duration = self.duration_minutes
+        
+        # 如果工作时长发生变化，更新底部迷你计时器显示
+        if old_duration != new_duration:
+            self.update_mini_timer_display()
         
         if old_theme != new_theme:
             print(f"主题已从 {old_theme} 更新为 {new_theme}")
@@ -180,9 +192,9 @@ class PomodoroTimerComponent:
                     
                     # 显示选中的任务标题
                     if self.selected_task:
-                        ui.label(self.selected_task['title']).classes('text-h5 mb-4 text-white')
+                        self.task_title_label = ui.label(self.selected_task['title']).classes('text-h5 mb-4 text-white')
                     else:
-                        ui.label('专注时间').classes('text-h5 mb-4 text-white')
+                        self.task_title_label = ui.label('专注时间').classes('text-h5 mb-4 text-white')
 
                     # 状态标签
                     status_text = '休息中' if self.in_break else '专注中'
@@ -212,37 +224,47 @@ class PomodoroTimerComponent:
         if not self.current_user or not self.task_manager:
             ui.notify('无法获取任务列表', type='negative')
             return
-            
+
         tasks = self.task_manager.get_tasks(self.current_user['user_id'], status='pending')
-        
+
         # 创建任务选择对话框
         dialog = ui.dialog()
         with dialog:
-            with ui.card().classes('w-96').style('text-align: center;'):
-                ui.label('请选择一个任务开始专注').classes('text-h6 w-full text-center')
-                
+            with ui.card().classes('w-96 bg-gray-900 text-white').style('text-align: center;'):
+                ui.label('请选择一个任务开始专注').classes('text-h6 w-full text-center text-white mb-4')
+
                 # 为每个任务创建一个按钮，使用纵向滚动容器
                 if tasks:
                     with ui.column().classes('w-full max-h-96 overflow-y-auto'):
                         for task in tasks:
                             task_title = task.get('title', '未命名任务')
-                            ui.button(task_title, on_click=lambda t=task: self.select_task_and_start(t)).classes('w-full mb-2').style('text-align: center; height: auto; white-space: normal;')
+                            # 按钮 + tooltip 绑定写法
+                            with ui.button(
+                                task_title,
+                                on_click=lambda t=task: (self.select_task_and_start(t), self.play_ding_sound(), dialog.close())
+                            ).classes(
+                                'w-full mb-2 bg-gray-800 text-white hover:bg-gray-700 truncate'
+                            ).style(
+                                'text-align: left; height: auto;'
+                            ):
+                                ui.tooltip(task_title)
                 else:
-                    ui.label('暂无可用任务').classes('text-gray-500 w-full text-center')
-                    ui.button('关闭', on_click=dialog.close).classes('mt-4 w-full').style('text-align: center;')
-        
+                    ui.label('暂无可用任务').classes('text-gray-400 w-full text-center')
+                    ui.button(
+                        '关闭', 
+                        on_click=dialog.close
+                    ).classes('mt-4 w-full bg-gray-700 text-white hover:bg-gray-600').style('text-align: center;')
+
         dialog.open()
         
     def select_task_and_start(self, task):
         """选择任务并开始计时"""
         self.selected_task = task
-        # 关闭所有打开的对话框
-        ui.run_javascript('''
-            const dialogs = document.querySelectorAll('.q-dialog');
-            dialogs.forEach(dialog => {
-                dialog.__vueParentComponent?.exposed?.hide?.();
-            });
-        ''')
+        # 如果计时器对话框中的任务标题标签存在，更新其文本
+        if hasattr(self, 'task_title_label') and self.task_title_label:
+            self.task_title_label.text = task['title']
+        self.play_ding_sound()
+
         # 启动计时器
         self.start_timer()
         
@@ -348,6 +370,8 @@ class PomodoroTimerComponent:
 
         # 发送通知
         ui.notify('计时开始！', type='positive')
+        # 播放开始音频
+        self.play_ding_sound()
         # print(f"启动计时器: 任务ID={task_id}, 阶段={phase}, 时长={duration}分钟")
 
     def pause_timer(self):
@@ -374,9 +398,9 @@ class PomodoroTimerComponent:
         self.load_settings()
 
         self.timer_running = False
-        if self.timer_task:
-            self.timer_task.cancel()
-            self.timer_task = None
+        # if self.timer_task:
+        #     self.timer_task.cancel()
+        #     self.timer_task = None
 
         # 清除暂停状态
         self.paused_remaining = None
@@ -386,6 +410,10 @@ class PomodoroTimerComponent:
         self.update_timer_display(self.duration_minutes * 60)
         if self.status_label:
             self.status_label.text = '暂停'
+
+        # 停止白噪音播放并切换声音控制按钮
+        if self.is_sound_on:
+            self.toggle_sound()
 
         ui.notify('计时器已重置', type='info')
         print("计时器已重置")
@@ -409,11 +437,8 @@ class PomodoroTimerComponent:
                     print("时间到，完成阶段")
                     # 完成当前阶段
                     await self.complete_phase()
-                    # 如果进入休息阶段，继续计时
-                    if self.in_break and self.active_session:
-                        continue
-                    else:
-                        break
+                    # 在complete_phase中已经处理了下一阶段的计时器启动，所以这里直接跳出循环
+                    break
 
                 # 更新计时器
                 await asyncio.sleep(1)
@@ -467,6 +492,8 @@ class PomodoroTimerComponent:
             # 使用安全通知
             # ui.notify('专注完成！进入休息阶段', type='positive')
             print(">>> 进入休息阶段")
+            # 播放结束音频
+            self.play_ding_sound()
 
             # 设置休息阶段
             self.in_break = True
@@ -487,6 +514,10 @@ class PomodoroTimerComponent:
                 # 更新UI显示休息时间
                 self.update_timer_display(self.active_session['remaining'])
                 
+                # 更新状态标签
+                if self.status_label:
+                    self.status_label.text = '休息中'
+                
                 # 重新启动计时器
                 self.timer_running = True
                 self.timer_task = asyncio.create_task(self.run_timer())
@@ -502,6 +533,8 @@ class PomodoroTimerComponent:
             # 休息阶段完成
             print(">>> 休息阶段完成")
             # ui.notify('休息完成！准备新一轮专注', type='positive')
+            # 播放结束音频
+            self.play_ding_sound()
 
             # 重置状态
             self.in_break = False
@@ -620,6 +653,15 @@ class PomodoroTimerComponent:
         return self.timer_running
 
 
+    def play_ding_sound(self):
+        """播放提示音"""
+        try:
+            # 创建并播放提示音
+            self.ding_audio = ui.audio('/static/sound/ding.mp3').classes('hidden')
+            self.ding_audio.play()
+        except Exception as e:
+            print(f"播放提示音失败: {e}")
+
     def toggle_sound(self):
         """切换白噪音开关"""
         self.is_sound_on = not self.is_sound_on
@@ -635,6 +677,8 @@ class PomodoroTimerComponent:
             # 确保audio对象存在
             if not self.audio:
                 self.audio = ui.audio(f"/static/sound/{current_theme['sound']}").classes('hidden')
+                # 设置循环播放
+                self.audio.on('ended', lambda: self.audio.play())
             else:
                 # 更新音频源
                 self.audio.src = f"/static/sound/{current_theme['sound']}"
