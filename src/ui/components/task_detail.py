@@ -6,6 +6,8 @@ from nicegui import ui
 from typing import Dict, Optional, Callable, List
 from datetime import date
 from .tag_edit_dialog import TagEditDialog
+from src.services.ai_assistant import AIAssistant
+from src.services.pomodoro_manager import UserSettingsManager
 
 
 class TaskDetailComponent:
@@ -15,6 +17,8 @@ class TaskDetailComponent:
         self.on_start_pomodoro = on_start_pomodoro
         self.on_close = on_close
         self.user_id = user_id
+        self.ai_assistant = AIAssistant()
+        self.user_settings_manager = UserSettingsManager(task_manager.db) # 实例化 UserSettingsManager
         self.selected_task: Optional[Dict] = None
         self.initial_task_state: Optional[Dict] = None  # 保存初始状态
         self.task_detail_open = False
@@ -157,6 +161,10 @@ class TaskDetailComponent:
                             self.estimated_pomodoros_input.on('blur', lambda: self.auto_save_field('estimated_pomodoros'))
                             ui.label('个').classes('text-xs sm:text-sm')
                             
+                            # AI 预估按钮
+                            ui.button(icon='auto_awesome', on_click=self.estimate_pomodoros_with_ai).props('flat round size=sm color=primary').tooltip('AI预估番茄钟数量')
+
+
                             # 显示已使用数量
                             used_pomodoros = self.selected_task.get('used_pomodoros', 0)
                             if used_pomodoros > 0:
@@ -269,6 +277,47 @@ class TaskDetailComponent:
         
         self.on_close()
 
+    async def estimate_pomodoros_with_ai(self):
+        """使用AI预估番茄钟数量"""
+        if not self.selected_task or not self.task_detail_open: # 添加检查
+            ui.notify('请先选择一个任务或任务详情面板已关闭', type='warning') # 更新提示
+            return
+
+        task_title = self.selected_task.get('title', '')
+        task_description = self.selected_task.get('description', '')
+
+        # 获取用户设置的番茄钟时长
+        user_settings = self.user_settings_manager.get_user_settings(self.user_id)
+        pomodoro_duration = user_settings.get('pomodoro_work_duration', 25) if user_settings else 25
+
+        if not task_title:
+            ui.notify('任务标题为空，无法进行AI预估', type='warning')
+            return
+
+        notification_handle = ui.notify('正在使用AI预估番茄钟数量，请稍候...', type='info', timeout=1) # timeout=0 表示不自动关闭
+
+        try:
+            # 调用AI助手的新方法进行番茄钟数量预估
+            estimated_value = await self.ai_assistant.estimate_pomodoro_count(
+                task_title=task_title,
+                task_description=task_description,
+                pomodoro_duration=pomodoro_duration
+            )
+
+            if not self.task_detail_open: # 再次检查，如果面板已关闭则不更新UI
+                return
+
+            if estimated_value is not None:
+                self.estimated_pomodoros_input.set_value(estimated_value)
+                self.auto_save_field('estimated_pomodoros', new_value=estimated_value)
+                ui.notify(f'AI预估番茄钟数量为: {estimated_value} 个', type='positive')
+            else:
+                ui.notify('AI未能给出有效预估', type='warning')
+        except Exception as e:
+            if self.task_detail_open: # 再次检查活跃状态
+                if notification_handle: # 检查是否为None
+                    notification_handle.close() # 关闭初始通知
+                ui.notify(f'AI预估过程中发生错误: {str(e)}', type='negative')
 
 
     # def reset_form(self):

@@ -22,8 +22,7 @@ from src.ui.pages.main_page import MainPage
 from src.ui.pages.settings_page import SettingsPage
 
 # 配置日志
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+
 
 # 初始化数据库和服务
 db_manager = DatabaseManager()

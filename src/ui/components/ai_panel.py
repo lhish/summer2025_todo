@@ -196,8 +196,6 @@ class AIPanelComponent:
             
             if response:
                 self.add_message_to_chat(dialog, response, 'ai')
-            else:
-                self.add_message_to_chat(dialog, "抱歉，无法生成任务推荐，请稍后再试。", 'ai')
             
         except Exception as e:
             self.add_message_to_chat(dialog, f'生成任务推荐时出错: {str(e)}', 'ai')
@@ -210,36 +208,36 @@ class AIPanelComponent:
             
             # 构建AI角色和任务数据
             system_prompt = """你是一个工作量预估专家。根据任务描述和用户的历史工作数据，预估完成该任务所需的番茄钟数量。
-
+            
 预估原则：
 - 简单任务（邮件、整理）：1-2个番茄钟
 - 中等任务（文档、学习）：3-6个番茄钟
 - 复杂任务（编程、研究）：6-12个番茄钟
 - 考虑用户的工作效率和专注时长
-
+            
 请提供：
 1. 预估的番茄钟数量
 2. 预估理由
 3. 时间安排建议
 4. 可能的挑战和应对策略
-
+            
 用中文回答，语调专业。"""
             
             # 构建包含任务数据的提示
             prompt = f"""用户数据：
 当前时间：{user_data['current_time']}
-
+            
 待完成任务：
 {self.format_tasks_for_ai(user_data['all_tasks'])}
-
+            
 效能数据：
 {user_data['productivity_data']}
-
+            
 专注时长数据：
 {user_data['focus_data']}
-
+            
 需要预估的任务：{message}
-
+            
 请根据以上数据预估工作量。"""
             
             # 调用AI
@@ -247,8 +245,6 @@ class AIPanelComponent:
             
             if response:
                 self.add_message_to_chat(dialog, response, 'ai')
-            else:
-                self.add_message_to_chat(dialog, "抱歉，无法预估工作量，请稍后再试。", 'ai')
             
         except Exception as e:
             self.add_message_to_chat(dialog, f'预估工作量时出错: {str(e)}', 'ai')
@@ -300,8 +296,6 @@ class AIPanelComponent:
             
             if response:
                 self.add_message_to_chat(dialog, response, 'ai')
-            else:
-                self.add_message_to_chat(dialog, "抱歉，无法生成效能报告，请稍后再试。", 'ai')
             
         except Exception as e:
             self.add_message_to_chat(dialog, f'生成效能报告时出错: {str(e)}', 'ai')
@@ -314,38 +308,38 @@ class AIPanelComponent:
             
             # 构建AI角色和任务数据
             system_prompt = """你是一个工作模式分析专家。根据用户的工作数据，分析工作习惯和效率模式。
-
+            
 分析维度：
 1. 最佳工作时间段
 2. 专注持续时间特点
 3. 任务类型偏好
 4. 效率模式特征
 5. 工作节奏稳定性
-
+            
 请提供：
 1. 工作模式总结
 2. 效率高峰期分析
 3. 个性化建议
 4. 时间管理优化
 5. 习惯养成建议
-
+            
 用中文回答，语调专业。"""
             
             # 构建包含任务数据的提示
             prompt = f"""用户数据：
 当前时间：{user_data['current_time']}
-
+            
 待完成任务：
 {self.format_tasks_for_ai(user_data['all_tasks'])}
-
+            
 专注时长数据：
 {user_data['focus_data']}
-
+            
 效能数据：
 {user_data['productivity_data']}
-
+            
 用户需求：{message}
-
+            
 请根据以上数据分析工作模式。"""
             
             # 调用AI
@@ -353,8 +347,6 @@ class AIPanelComponent:
             
             if response:
                 self.add_message_to_chat(dialog, response, 'ai')
-            else:
-                self.add_message_to_chat(dialog, "抱歉，无法分析工作模式，请稍后再试。", 'ai')
             
         except Exception as e:
             self.add_message_to_chat(dialog, f'分析工作模式时出错: {str(e)}', 'ai')
@@ -399,8 +391,6 @@ class AIPanelComponent:
             
             if response:
                 self.add_message_to_chat(dialog, response, 'ai')
-            else:
-                self.add_message_to_chat(dialog, "抱歉，无法处理您的请求，请稍后再试。", 'ai')
                 
         except Exception as e:
             self.add_message_to_chat(dialog, f'处理消息时出错: {str(e)}', 'ai')
