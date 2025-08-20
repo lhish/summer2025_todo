@@ -28,46 +28,46 @@ class TaskManager:
                    estimated_pomodoros: int = 1,
                    repeat_cycle: str = 'none',
                    tags: List[str] = None) -> Optional[int]:
-        """
-        创建任务
-        
-        Args:
-            user_id: 用户ID
-            title: 任务标题
-            description: 任务描述
-            due_date: 截止日期（只包含日期，不包含时间）
-            priority: 优先级 (high, medium, low)
-            estimated_pomodoros: 预估番茄钟数量
-            repeat_cycle: 重复周期 (none, daily, weekly, monthly)
-            tags: 标签列表
-            
-        Returns:
-            任务ID，创建失败返回None
-        """
-        try:
-            # 创建任务
-            query = """
-            INSERT INTO tasks (user_id, title, description, due_date, priority, estimated_pomodoros, repeat_cycle)
-            VALUES (%s, %s, %s, %s, %s, %s, %s)
-            """
-            
-            params = (user_id, title, description, due_date, priority, estimated_pomodoros, repeat_cycle)
-            
-            if self.db.execute_update(query, params):
-                task_id = self.db.get_last_insert_id()
-                
-                # 添加标签
-                if task_id and tags:
-                    self._add_tags_to_task(task_id, user_id, tags)
-                
-                logger.info(f"任务创建成功: {title}")
-                return task_id
-            
-            return None
-            
-        except Exception as e:
-            logger.error(f"创建任务失败: {e}")
-            return None
+          """
+          创建任务
+          
+          Args:
+              user_id: 用户ID
+              title: 任务标题
+              description: 任务描述
+              due_date: 截止日期（只包含日期，不包含时间）
+              priority: 优先级 (high, medium, low)
+              estimated_pomodoros: 预估番茄钟数量
+              repeat_cycle: 重复周期 (none, daily, weekly, monthly)
+              tags: 标签列表
+              
+          Returns:
+              任务ID，创建失败返回None
+          """
+          try:
+              # 创建任务
+              query = """
+              INSERT INTO tasks (user_id, title, description, due_date, priority, estimated_pomodoros, repeat_cycle)
+              VALUES (%s, %s, %s, %s, %s, %s, %s)
+              """
+              
+              params = (user_id, title, description, due_date, priority, estimated_pomodoros, repeat_cycle)
+              
+              if self.db.execute_update(query, params):
+                  task_id = self.db.get_last_insert_id()
+                  
+                  # 添加标签
+                  if task_id and tags:
+                      self._add_tags_to_task(task_id, user_id, tags)
+                  
+                  logger.info(f"任务创建成功: {title}")
+                  return task_id
+              
+              return None
+              
+          except Exception as e:
+              logger.error(f"创建任务失败: {e}")
+              return None
     
     def get_tasks(self, 
                   user_id: int,

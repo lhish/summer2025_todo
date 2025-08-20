@@ -5,10 +5,11 @@
 from nicegui import ui
 from datetime import date
 from typing import Dict, List, Callable, Optional
+from src.services.ai_assistant import AIAssistant
 
 
 class TaskListComponent:
-    def __init__(self, task_manager, pomodoro_manager, settings_manager, tag_manager, current_user: Dict, on_task_select: Callable, on_start_pomodoro: Callable, on_refresh: Callable):
+    def __init__(self, task_manager, pomodoro_manager, settings_manager, tag_manager, current_user: Dict, on_task_select: Callable, on_start_pomodoro: Callable, on_refresh: Callable[[Optional[int]], None]):
         self.task_manager = task_manager
         self.pomodoro_manager = pomodoro_manager
         self.settings_manager = settings_manager
@@ -19,6 +20,7 @@ class TaskListComponent:
         self.on_refresh = on_refresh
         self.current_tasks: List[Dict] = []
         self.current_view = 'my_day'
+        self.ai_assistant = AIAssistant()
 
     def create_add_task_input(self, container):
         """创建添加任务输入框"""
@@ -44,15 +46,51 @@ class TaskListComponent:
                         if (input) input.focus();
                     }, 100);
                 ''')
-        
+
+        async def handle_smart_recommendation():
+            # 调用AI服务获取推荐任务
+            ui.notify('正在生成智能推荐任务...', type='info', timeout=1) # 显示加载提示
+            
+            # 获取当前任务列表标题
+            current_task_titles = [task['title'] for task in self.current_tasks if task['status'] == 'pending']
+            
+            if not current_task_titles:
+                ui.notify('当前没有待办任务可供推荐', type='warning')
+                return
+
+            # 修改提示词，使其旨在从现有任务中选择一个最相关的任务标题
+            prompt = f"请从以下任务列表中选择一个你认为最相关或最紧急的任务标题，只返回一个任务标题，不要有其他任何内容。任务列表：{', '.join(current_task_titles)}"
+            system_prompt = "你是一个任务推荐助手，只返回一个任务标题，不要有其他任何内容。"
+            
+            recommended_task_title = await self.ai_assistant.call_llm_api(prompt, system_prompt)
+            ui.notify('智能推荐任务生成完毕', type='positive', timeout=1000) # 隐藏加载提示
+
+            if recommended_task_title:
+                recommended_task_title = recommended_task_title.strip()
+                # 找到对应的现有任务
+                found_task = next((task for task in self.current_tasks if task['title'] == recommended_task_title), None)
+                
+                if found_task:
+                    print(f"DEBUG: Calling highlight_task for task_id: {found_task['task_id']} from handle_smart_recommendation")
+                    await self.highlight_task(found_task['task_id'])
+                    print(f"DEBUG: highlight_task called for task_id: {found_task['task_id']} from handle_smart_recommendation")
+                    ui.notify(f'推荐任务: {found_task["title"]}', type='positive')
+                else:
+                    print(f"DEBUG: Recommended task '{recommended_task_title}' not found in current_tasks.")
+                    ui.notify(f'未能找到推荐任务: {recommended_task_title}，请稍后再试', type='warning')
+            else:
+                print("DEBUG: Failed to get smart recommendation from AI service.")
+                ui.notify('未能获取智能推荐任务，请检查AI服务', type='negative')
+
         with container:
-            with ui.row().classes('w-full mb-6'):
+            with ui.row().classes('w-full mb-6 items-center'): # Add items-center for vertical alignment
                 task_input = ui.input(placeholder='添加任务...').classes('flex-1')
                 # 使用on方法监听键盘事件
                 task_input.on('keydown', handle_enter_key)
+                ui.button(icon='auto_awesome', on_click=handle_smart_recommendation).props('flat round color=purple').tooltip('智能推荐任务') # New button
                 ui.button(icon='add', on_click=handle_button_add).props('flat round color=primary')
 
-    def create_quick_task(self, title: str):
+    def create_quick_task(self, title: str): # Modified function signature
         """快速创建任务"""
         # 根据当前视图设置默认属性
         due_date = None
@@ -75,12 +113,13 @@ class TaskListComponent:
             title=title,
             due_date=due_date,
             priority=priority,
-            tags=tags
+            tags=tags,
         )
         
         if task_id:
             ui.notify('任务创建成功', type='positive')
-            self.on_refresh()
+            # 传递 is_newly_created 标志给 on_refresh，以便高亮新创建的任务
+            self.on_refresh(newly_created_task_id=task_id)
         else:
             ui.notify('任务创建失败', type='negative')
 
@@ -113,8 +152,19 @@ class TaskListComponent:
         card_classes = 'task-item w-full p-4 bg-white rounded shadow-sm items-center gap-3'
         if task.get('due_date') and task['due_date'] < date.today():
             card_classes = 'task-item w-full p-4 bg-red-50 rounded shadow-sm items-center gap-3'
+
+        card_element = ui.row().classes(card_classes).props(f'data-task-id="{task["task_id"]}"')
         
-        with ui.row().classes(card_classes):
+        # 如果是新创建的任务，添加短暂高亮效果
+        if task.get('is_newly_created'):
+            # 移除标记，因为高亮是短暂的，不需要持久化
+            del task['is_newly_created']
+            print(f"DEBUG: Calling highlight_task for newly created task_id: {task['task_id']} from create_task_item")
+            ui.timer(0.1, lambda: self.highlight_task(task['task_id']), once=True) # 稍微延迟执行，确保元素已渲染
+            print(f"DEBUG: highlight_task timer set for newly created task_id: {task['task_id']} from create_task_item")
+
+        with card_element:
+        
             # 完成按钮
             ui.button(icon='radio_button_unchecked', on_click=toggle_complete).props('flat round size=sm')
             
@@ -304,4 +354,33 @@ class TaskListComponent:
             'pending_tasks': len(pending_tasks),
             'focus_time': focus_time,
             'completed_tasks': len(completed_tasks)
-        } 
+        }
+
+    async def highlight_task(self, task_id: int):
+        """
+        短暂高亮指定任务项
+        """
+        print(f"DEBUG: highlight_task method called for task_id: {task_id}")
+        # 添加高亮样式
+        await ui.run_javascript(f'''
+            const taskElement = document.querySelector('[data-task-id="{task_id}"]');
+            if (taskElement) {{
+                taskElement.classList.add('highlight-task');
+                console.log('DEBUG: Added highlight-task class to element', taskElement);
+            }} else {{
+                console.log('DEBUG: Task element not found for task_id', {task_id});
+            }}
+        ''')
+        # 延迟后移除高亮样式
+        await ui.run_javascript(f'''
+            setTimeout(() => {{
+                const taskElement = document.querySelector('[data-task-id="{task_id}"]');
+                if (taskElement) {{
+                    taskElement.classList.remove('highlight-task');
+                    console.log('DEBUG: Removed highlight-task class from element', taskElement);
+                }} else {{
+                    console.log('DEBUG: Task element not found for task_id', {task_id}, 'during removal attempt');
+                }}
+            }}, 2000); // 2秒后移除高亮
+        ''')
+        print(f"DEBUG: JavaScript for highlight_task for task_id {task_id} sent.")

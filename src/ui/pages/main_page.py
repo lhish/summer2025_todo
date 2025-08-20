@@ -133,7 +133,9 @@ class MainPage:
             self.handle_logout,
             self.show_settings,
             self.show_statistics,
-            self.refresh_and_update_ui
+            self.refresh_and_update_ui,
+            self.ai_assistant,
+            self.statistics_manager
         )
         
         # 任务列表组件
@@ -187,7 +189,7 @@ class MainPage:
             self.user_tags
         )
 
-    def refresh_current_tasks(self):
+    def refresh_current_tasks(self, newly_created_task_id: Optional[int] = None):
         """刷新当前任务列表"""
         if self.current_user:
             if self.current_view.startswith('tag_'):
@@ -205,6 +207,12 @@ class MainPage:
             
             # 更新任务列表组件
             if self.task_list_component:
+                # 如果有新创建的任务ID，在任务数据中标记
+                if newly_created_task_id:
+                    for task in self.current_tasks:
+                        if task['task_id'] == newly_created_task_id:
+                            task['is_newly_created'] = True
+                            break
                 self.task_list_component.set_current_tasks(self.current_tasks)
                 self.task_list_component.set_current_view(self.current_view)
 
@@ -281,9 +289,9 @@ class MainPage:
         ui.notify('已退出登录', type='info')
         ui.navigate.to('/login')
 
-    def refresh_and_update_ui(self):
+    def refresh_and_update_ui(self, newly_created_task_id: Optional[int] = None):
         """刷新数据并更新UI"""
-        self.refresh_current_tasks()
+        self.refresh_current_tasks(newly_created_task_id)
         self.load_user_data()
         
         # 更新侧边栏

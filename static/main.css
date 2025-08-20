@@ -281,4 +281,20 @@ body {
 
 .sidebar-toggle-row {
     border-right: 3px solid transparent;
-} 
+}
+
+/* 任务高亮样式 */
+.highlight-task {
+    animation: highlight-fade 2s ease-out forwards;
+}
+
+@keyframes highlight-fade {
+    0% {
+        background-color: #e6f7ff; /* 淡蓝色背景 */
+        box-shadow: 0 0 10px rgba(33, 150, 243, 0.7); /* 淡蓝色阴影，增加透明度 */
+    }
+    100% {
+        background-color: transparent;
+        box-shadow: none;
+    }
+}
