@@ -31,13 +31,9 @@ class PomodoroTimerComponent:
         self.focus_mode_switch = None
 
         # 主题相关属性
-        self.themes = [
-            {'name': '火焰', 'image': 'fire.jpg', 'sound': 'fire.mp3'},
-            {'name': '森林', 'image': 'forest.jpg', 'sound': 'forest.mp3'},
-            {'name': '海岸', 'image': 'coast.jpg', 'sound': 'coast.mp3'},
-            {'name': '烟花', 'image': 'fireworks.jpg', 'sound': 'fireworks.mp3'}
-        ]
-        self.current_theme = '森林'
+        from src.utils.global_config import AVAILABLE_THEMES, get_current_theme
+        self.themes = AVAILABLE_THEMES
+        self.current_theme = get_current_theme()
         self.is_sound_on = False
 
         # 创建通知容器
@@ -71,8 +67,9 @@ class PomodoroTimerComponent:
             # 确保正确获取专注模式值
             self.focus_mode = bool(settings.get('focus_mode', False))
             
-            # 加载主题设置
-            self.current_theme = settings.get('pomodoro_theme', '森林')
+            # 从全局变量加载主题设置
+            from src.utils.global_config import get_current_theme
+            self.current_theme = get_current_theme()
 
             # print(
             #    f"加载设置成功: duration={self.duration_minutes}, break={self.break_minutes}, focus_mode={self.focus_mode}")
@@ -82,7 +79,8 @@ class PomodoroTimerComponent:
             self.duration_minutes = 25
             self.break_minutes = 5
             self.focus_mode = False
-            self.current_theme = '森林'
+            from src.utils.global_config import get_current_theme
+            self.current_theme = get_current_theme()
 
     def setup_notification_handler(self):
         """设置通知处理程序"""
@@ -275,6 +273,10 @@ class PomodoroTimerComponent:
         # 更新当前主题
         self.current_theme = theme_name
         
+        # 更新全局变量中的主题设置
+        from src.utils.global_config import set_current_theme
+        set_current_theme(theme_name)
+        
         # 获取主题数据
         theme = next(t for t in self.themes if t['name'] == theme_name)
         
@@ -287,23 +289,36 @@ class PomodoroTimerComponent:
                 background-repeat: no-repeat;
             ''')
         
-        # 处理音频播放 - 只在音频开启时更新
+        # 处理音频播放 - 实现重置白噪音功能
         if self.is_sound_on:
             try:
+                # 暂停当前音频
+                if self.audio:
+                    self.audio.pause()
+                    print(f"已暂停当前音频: {self.audio.src}")
+                
                 # 确保音频对象存在
                 if not self.audio:
                     self.audio = ui.audio(f"/static/sound/{theme['sound']}").classes('hidden')
+                    # 设置循环播放
+                    self.audio.on('ended', lambda: self.audio.play())
                 else:
                     # 更新音频源
                     self.audio.src = f"/static/sound/{theme['sound']}"
                 
-                # 延迟播放新主题的音频
-                import asyncio
-                asyncio.create_task(self._play_theme_audio(theme['sound']))
+                # 通知用户需要手动点击播放按钮
+                ui.notify('主题已切换，请点击播放按钮重新开始白噪音', type='info')
+                
+                # 暂时关闭音频状态，等待用户手动点击播放
+                self.is_sound_on = False
+                if self.sound_btn:
+                    self.sound_btn.props('icon=volume_off')
+                
+                print(f"主题切换完成，音频源已更新为: {self.audio.src}")
                 
             except Exception as e:
-                print(f"主题切换时播放音频失败: {e}")
-                ui.notify('音频播放需要用户交互，请点击播放按钮', type='info')
+                print(f"主题切换时处理音频失败: {e}")
+                ui.notify('音频处理失败，请刷新页面重试', type='warning')
 
     async def _play_theme_audio(self, sound_file):
         """延迟播放主题音频"""
@@ -687,9 +702,10 @@ class PomodoroTimerComponent:
             try:
                 self.audio.play()
                 print(f"正在播放音频: {self.audio.src}")
+                ui.notify('白噪音已开启', type='positive')
             except Exception as e:
                 print(f"播放音频失败: {e}")
-                #ui.notify('请点击播放按钮开始白噪音', type='info')
+                # ui.notify('音频播放失败，请稍后重试', type='warning')
                 
         else:
             print("关闭白噪音")
@@ -698,8 +714,11 @@ class PomodoroTimerComponent:
             if self.audio:
                 try:
                     self.audio.pause()
-                except:
-                    pass
+                    print("白噪音已暂停")
+                except Exception as e:
+                    print(f"暂停音频失败: {e}")
+            
+            ui.notify('白噪音已关闭', type='info')
         
         print(f"白噪音状态: {'开启' if self.is_sound_on else '关闭'}")
 
