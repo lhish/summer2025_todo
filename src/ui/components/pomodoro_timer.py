@@ -5,11 +5,12 @@ from nicegui import ui, app
 
 
 class PomodoroTimerComponent:
-    def __init__(self, pomodoro_manager, task_manager, current_user, settings_manager: Dict):
+    def __init__(self, pomodoro_manager, task_manager, current_user, settings_manager: Dict, on_task_update=None):
         self.pomodoro_manager = pomodoro_manager
         self.task_manager = task_manager
         self.current_user = current_user
         self.settings_manager = settings_manager  # 添加设置管理器
+        self.on_task_update = on_task_update  # 添加UI更新回调
 
         self.active_session: Optional[Dict] = None
         self.timer_running = False
@@ -335,9 +336,11 @@ class PomodoroTimerComponent:
             task = self.task_manager.get_task_by_id(task_id)
             if task:
                 self.selected_task = task
+                print(f"🎯 通过参数设置任务: {task['title']} (ID: {task['task_id']})")
         elif self.selected_task:
             # 如果已经有选中的任务，使用其ID
-            task_id = self.selected_task.get('id')
+            task_id = self.selected_task.get('task_id')
+            print(f"🎯 从已选任务获取ID: {self.selected_task['title']} (ID: {task_id})")
 
         # 确定当前阶段类型
         phase = "break" if self.in_break else "focus"
@@ -482,12 +485,46 @@ class PomodoroTimerComponent:
 
             # 记录专注时长到数据库
             if self.pomodoro_manager and self.current_user:
-                # 使用新的 record_focus_session 方法
-                self.pomodoro_manager.record_focus_session(
+                task_id = self.active_session.get('task_id')
+                print(f">>> 记录专注会话: 用户={self.current_user['user_id']}, 任务={task_id}, 时长={actual_duration_minutes}分钟")
+                
+                # 使用新的 record_focus_session 方法（会自动增加used_pomodoros）
+                session_success = self.pomodoro_manager.record_focus_session(
                     user_id=self.current_user['user_id'],
-                    task_id=self.active_session.get('task_id'),
+                    task_id=task_id,
                     duration_minutes=actual_duration_minutes
                 )
+                print(f">>> 专注会话记录: {'成功' if session_success else '失败'}")
+                
+                # 如果有任务ID，检查任务完成状态
+                if task_id and self.task_manager and session_success:
+                    # 获取更新后的任务数据（record_focus_session已经增加了used_pomodoros）
+                    updated_task = self.task_manager.get_task_by_id(task_id)
+                    if updated_task:
+                        print(f">>> 任务状态: {updated_task['title']} - 已用={updated_task['used_pomodoros']}, 预估={updated_task['estimated_pomodoros']}")
+                        
+                        # 检查是否完成所有预估的番茄数
+                        if updated_task['used_pomodoros'] >= updated_task['estimated_pomodoros']:
+                            # 自动标记任务为完成
+                            completion_success = self.task_manager.toggle_task_status(task_id, 'completed')
+                            if completion_success:
+                                print(f">>> 🎉 任务 '{updated_task['title']}' 已自动完成！")
+                                # 使用安全的通知方式
+                                self.safe_notify(f'🎉 任务 "{updated_task["title"]}" 已完成！', 'positive')
+                            else:
+                                print(">>> ⚠️ 自动完成任务失败")
+                        else:
+                            remaining = updated_task['estimated_pomodoros'] - updated_task['used_pomodoros']
+                            print(f">>> 任务还需要 {remaining} 个番茄")
+                            # 使用安全的通知方式
+                            self.safe_notify(f'番茄钟完成！还需要 {remaining} 个番茄 🍅', 'positive')
+                
+                # 调用UI更新回调，刷新任务列表中的番茄显示
+                if self.on_task_update:
+                    print(">>> 调用UI更新回调")
+                    self.on_task_update()
+                else:
+                    print(">>> ⚠️ 没有UI更新回调")
 
             # 使用安全通知
             # ui.notify('专注完成！进入休息阶段', type='positive')
@@ -627,18 +664,25 @@ class PomodoroTimerComponent:
 
     def start_pomodoro_for_task(self, task_id: int):
         """为特定任务启动番茄钟"""
+        print(f"🚀 start_pomodoro_for_task 调用，task_id={task_id}")
+        
         if self.timer_running:
+            print("⚠️ 已有活跃番茄钟运行")
             ui.notify('已有活跃的番茄钟', type='warning')
             return
 
         task = self.task_manager.get_task_by_id(task_id)
         if task:
+            print(f"✅ 获取到任务: {task['title']} (ID: {task['task_id']})")
             self.selected_task = task
             self.show_timer_dialog()
             # 直接启动计时器，而不需要用户再点击开始按钮
             self.start_timer(task_id)
             ui.notify(f'开始专注：{task["title"]}', type='positive')
-            # print(f"为任务启动番茄钟: {task['title']} (ID: {task_id})")
+            print(f"🍅 番茄钟已启动: {task['title']} (ID: {task_id})")
+        else:
+            print(f"❌ 无法获取任务，task_id={task_id}")
+            ui.notify('任务不存在', type='negative')
 
     def set_selected_task(self, task: Optional[Dict]):
         """设置选中的任务"""

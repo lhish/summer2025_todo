@@ -155,7 +155,8 @@ class MainPage:
             self.pomodoro_manager,
             self.task_manager,
             self.current_user,
-            self.settings_manager
+            self.settings_manager,
+            self.refresh_and_update_ui  # 添加UI更新回调
         )
         
         # 统计组件
@@ -191,10 +192,15 @@ class MainPage:
 
     def refresh_current_tasks(self, newly_created_task_id: Optional[int] = None):
         """刷新当前任务列表"""
+        print(f"\n=== 主页面刷新任务列表 ===")
+        print(f"当前视图: {self.current_view}")
+        print(f"当前用户: {self.current_user['user_id'] if self.current_user else 'None'}")
+        
         if self.current_user:
             if self.current_view.startswith('tag_'):
                 # 标签视图
                 tag_id = int(self.current_view.split('_')[1])
+                print(f"获取标签任务: tag_id={tag_id}")
                 self.current_tasks = self.task_manager.get_tasks(
                     user_id=self.current_user['user_id'],
                     tag_id=tag_id,
@@ -203,7 +209,10 @@ class MainPage:
                 )
             else:
                 # 默认视图
+                print(f"获取视图任务: view={self.current_view}")
                 self.current_tasks = self.task_manager.get_tasks_by_view(self.current_user['user_id'], self.current_view)
+            
+            print(f"从数据库获取到 {len(self.current_tasks)} 个任务")
             
             # 更新任务列表组件
             if self.task_list_component:
@@ -213,6 +222,7 @@ class MainPage:
                         if task['task_id'] == newly_created_task_id:
                             task['is_newly_created'] = True
                             break
+                print("调用 task_list_component.set_current_tasks()...")
                 self.task_list_component.set_current_tasks(self.current_tasks)
                 self.task_list_component.set_current_view(self.current_view)
 
@@ -252,6 +262,7 @@ class MainPage:
 
     def start_pomodoro_for_task(self, task_id: int):
         """为特定任务开始番茄工作法"""
+        print(f"📋 主页面 start_pomodoro_for_task 被调用，task_id: {task_id}")
         self.pomodoro_component.start_pomodoro_for_task(task_id)
 
     def close_task_detail(self):

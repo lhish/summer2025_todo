@@ -138,6 +138,14 @@ class TaskListComponent:
 
     def create_task_item(self, task: Dict):
         """创建任务项（卡片式）"""
+        
+        # 添加调试输出，显示正在创建的任务项的详细信息
+        print(f"\n--- 创建任务项: {task.get('title', 'N/A')} ---")
+        print(f"task_id: {task.get('task_id', 'N/A')}")
+        print(f"estimated_pomodoros: {task.get('estimated_pomodoros', 'N/A')} (类型: {type(task.get('estimated_pomodoros'))})")
+        print(f"used_pomodoros: {task.get('used_pomodoros', 'N/A')} (类型: {type(task.get('used_pomodoros'))})")
+        print(f"status: {task.get('status', 'N/A')}")
+        
         def toggle_complete():
             self.task_manager.toggle_task_status(task['task_id'], 'completed')
             self.on_refresh()
@@ -216,6 +224,13 @@ class TaskListComponent:
                 estimated = task.get('estimated_pomodoros', 1)
                 used = task.get('used_pomodoros', 0)
                 
+                # 添加番茄显示调试信息
+                print(f"番茄显示逻辑: estimated={estimated}, used={used}")
+                if estimated > 5:
+                    print(f"  > 5个番茄模式: used == estimated? {used == estimated}")
+                else:
+                    print(f"  <= 5个番茄模式: 将显示{estimated}个番茄，其中{used}个亮起")
+                
                 if detail_items or estimated or task.get('tags'):
                     with ui.row().classes('items-center gap-2 text-sm text-grey-6 flex-wrap'):
                         # 番茄数显示（排在最前面）
@@ -223,9 +238,11 @@ class TaskListComponent:
                             # 超过5个番茄时，只显示一个番茄和数字
                             if used == estimated:
                                 # 已完成全部番茄，显示鲜明颜色
+                                print(f"    显示亮番茄 (全部完成): 🍅 {used}/{estimated}")
                                 ui.label('🍅').classes('text-sm leading-none').style('filter: saturate(1.5) brightness(1.1);')
                             else:
                                 # 还没完成全部番茄，显示半透明
+                                print(f"    显示暗番茄 (未全部完成): 🍅 {used}/{estimated}")
                                 ui.label('🍅').classes('text-sm leading-none opacity-40').style('filter: grayscale(0.3);')
                             ui.label(f'{used}/{estimated}').classes('text-sm text-grey-600 leading-none')
                         else:
@@ -233,9 +250,11 @@ class TaskListComponent:
                             for i in range(estimated):
                                 if i < used:
                                     # 已使用的番茄（正常显示，鲜明颜色）
+                                    print(f"    番茄 {i+1}: 亮🍅 (i={i} < used={used})")
                                     ui.label('🍅').classes('text-sm leading-none').style('filter: saturate(1.5) brightness(1.1);')
                                 else:
                                     # 未使用的番茄（半透明显示）
+                                    print(f"    番茄 {i+1}: 暗🍅 (i={i} >= used={used})")
                                     ui.label('🍅').classes('text-sm leading-none opacity-40').style('filter: grayscale(0.3);')
                         
                         # 显示标签彩色圆点（在番茄数之后）
@@ -304,6 +323,24 @@ class TaskListComponent:
     def set_current_tasks(self, tasks: List[Dict]):
         """设置当前任务列表"""
         self.current_tasks = tasks
+        
+        # 添加调试输出，显示每个任务的所有字段
+        print(f"\n=== 任务列表刷新 - 共 {len(tasks)} 个任务 ===")
+        for i, task in enumerate(tasks):
+            print(f"任务 {i+1}:")
+            print(f"  task_id: {task.get('task_id', 'N/A')}")
+            print(f"  title: {task.get('title', 'N/A')}")
+            print(f"  status: {task.get('status', 'N/A')}")
+            print(f"  estimated_pomodoros: {task.get('estimated_pomodoros', 'N/A')}")
+            print(f"  used_pomodoros: {task.get('used_pomodoros', 'N/A')}")
+            print(f"  priority: {task.get('priority', 'N/A')}")
+            print(f"  due_date: {task.get('due_date', 'N/A')}")
+            print(f"  created_at: {task.get('created_at', 'N/A')}")
+            print(f"  updated_at: {task.get('updated_at', 'N/A')}")
+            print(f"  description: {task.get('description', 'N/A')[:50] if task.get('description') else 'N/A'}")
+            print(f"  tags: {task.get('tags', 'N/A')}")
+            print(f"  所有字段: {list(task.keys())}")
+            print()
 
     def set_current_view(self, view: str):
         """设置当前视图"""
