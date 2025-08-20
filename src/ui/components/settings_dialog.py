@@ -111,28 +111,23 @@ class SettingsDialogComponent:
                 min=1, max=30
             ).classes('w-full')
 
-            long_break = ui.number(
-                label='长休息时长（分钟）',
-                value=settings.get('pomodoro_long_break_duration', 15),
-                min=1, max=60
-            ).classes('w-full')
+            # long_break = ui.number(
+            #     label='长休息时长（分钟）',
+            #     value=settings.get('pomodoro_long_break_duration', 15),
+            #     min=1, max=60
+            # ).classes('w-full')
 
-            long_break_interval = ui.number(
-                label='长休息间隔（工作轮数）',
-                value=settings.get('pomodoro_long_break_interval', 4),
-                min=1, max=10
-            ).classes('w-full')
+            # long_break_interval = ui.number(
+            #     label='长休息间隔（工作轮数）',
+            #     value=settings.get('pomodoro_long_break_interval', 4),
+            #     min=1, max=10
+            # ).classes('w-full')
             
             # 主题选择
-            themes = [
-                {'name': '森林', 'image': 'forest.jpg', 'sound': 'forest.mp3'},
-                #{'name': '火焰', 'image': 'fire.jpg', 'sound': 'fire.mp3'},
-                #{'name': '海岸', 'image': 'coast.jpg', 'sound': 'coast.mp3'},
-                #{'name': '烟花', 'image': 'fireworks.jpg', 'sound': 'fireworks.mp3'}
-            ]
+            from src.utils.global_config import get_current_theme, AVAILABLE_THEMES
             
-            current_theme = settings.get('pomodoro_theme', '森林')
-            theme_options = {theme['name']: theme['name'] for theme in themes}
+            current_theme = get_current_theme()
+            theme_options = {theme['name']: theme['name'] for theme in AVAILABLE_THEMES}
             
             theme_select = ui.select(
                 label='番茄钟主题',
@@ -156,8 +151,8 @@ class SettingsDialogComponent:
                 on_click=lambda: self.save_pomodoro_settings({
                     'pomodoro_work_duration': int(work_duration.value),
                     'pomodoro_short_break_duration': int(short_break.value),
-                    'pomodoro_long_break_duration': int(long_break.value),
-                    'pomodoro_long_break_interval': int(long_break_interval.value),
+                    # 'pomodoro_long_break_duration': int(long_break.value),
+                    # 'pomodoro_long_break_interval': int(long_break_interval.value),
                     'pomodoro_theme': theme_select.value,
                     'auto_start_next_pomodoro': auto_start_next.value,
                     'auto_start_break': auto_start_break.value
@@ -244,9 +239,20 @@ class SettingsDialogComponent:
 
     def save_pomodoro_settings(self, settings_data: Dict):
         """保存番茄钟设置"""
+        # 从设置数据中提取主题并保存到全局变量
+        if 'pomodoro_theme' in settings_data:
+            from src.utils.global_config import set_current_theme
+            set_current_theme(settings_data['pomodoro_theme'])
+            
+            # 从设置数据中移除主题，不保存到数据库
+            settings_data_for_db = settings_data.copy()
+            settings_data_for_db.pop('pomodoro_theme')
+        else:
+            settings_data_for_db = settings_data
+
         success = self.settings_manager.update_user_settings(
             self.current_user['user_id'],
-            settings_data
+            settings_data_for_db
         )
 
         if success:
@@ -255,6 +261,8 @@ class SettingsDialogComponent:
             # 通知主页面刷新任务列表
             if self.on_settings_updated:
                 self.on_settings_updated()
+            # 强制刷新浏览器以确保主题白噪音生效
+            ui.run_javascript('window.location.reload()')
         else:
             ui.notify('保存失败', type='negative', icon='error')
 
@@ -268,6 +276,8 @@ class SettingsDialogComponent:
         if success:
             ui.notify('通知设置已保存', type='positive', icon='check')
             app.storage.user['settings_updated'] = True
+            # 强制刷新浏览器以确保通知设置生效
+            ui.run_javascript('window.location.reload()')
         else:
             ui.notify('保存失败', type='negative', icon='error')
 
@@ -281,11 +291,8 @@ class SettingsDialogComponent:
         if success:
             ui.notify('目标设置已保存', type='positive', icon='check')
             app.storage.user['settings_updated'] = True
-            # 刷新进度显示
-            settings = self.settings_manager.get_user_settings(self.current_user['user_id'])
-            self.content_area.clear()
-            with self.content_area:
-                self.render_content(settings)
+            # 强制刷新浏览器以确保目标设置生效
+            ui.run_javascript('window.location.reload()')
         else:
             ui.notify('保存失败', type='negative', icon='error')
 
