@@ -187,7 +187,11 @@ class MainPage:
         # 主内容组件
         self.main_content_component = MainContentComponent(
             self.current_user,
-            self.user_tags
+            self.user_tags,
+            statistics_component=self.stats_component,
+            ai_assistant=self.ai_assistant,
+            task_manager=self.task_manager,
+            statistics_manager=self.statistics_manager
         )
 
     def refresh_current_tasks(self, newly_created_task_id: Optional[int] = None):

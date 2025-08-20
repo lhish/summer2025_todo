@@ -124,7 +124,7 @@ class SidebarComponent:
                             with ui.column().classes('w-full items-center gap-2'):
                                 with ui.button(icon='add', on_click=self.show_create_tag_dialog).props('flat round size=sm color=primary') as add_btn:
                                     add_btn.tooltip('新建标签')
-                                with ui.button(icon='analytics', on_click=self.on_statistics).props('flat round size=sm') as stats_btn:
+                                with ui.button(icon='analytics', on_click=lambda: self.on_view_change('statistics')).props('flat round size=sm') as stats_btn:
                                     stats_btn.tooltip('统计分析')
                                 with ui.button(icon='settings', on_click=self.on_settings).props('flat round size=sm') as settings_btn:
                                     settings_btn.tooltip('设置')
@@ -136,7 +136,7 @@ class SidebarComponent:
                                 ui.button('新建标签', icon='add', on_click=self.show_create_tag_dialog).props('flat color=primary').classes('text-sm font-medium flex-shrink-0').style('white-space: nowrap; min-width: 80px;')
                                 
                                 with ui.row().classes('gap-1 flex-shrink-0'):
-                                    with ui.button(icon='analytics', on_click=self.on_statistics).props('flat round size=sm') as stats_btn:
+                                    with ui.button(icon='analytics', on_click=lambda: self.on_view_change('statistics')).props('flat round size=sm') as stats_btn:
                                         stats_btn.tooltip('统计分析')
                                     with ui.button(icon='settings', on_click=self.on_settings).props('flat round size=sm') as settings_btn:
                                         settings_btn.tooltip('设置')
