@@ -113,6 +113,14 @@ class StatisticsDashboardComponent:
             # 任务状态分布
             with ui.column().classes('flex-1'):
                 self.create_task_status_chart(user_id)
+        
+        # 第三行图表：每月任务趋势和每日任务创建与完成
+        with ui.row().classes('w-full gap-4 mt-4'):
+            with ui.column().classes('flex-1'):
+                self.create_monthly_task_chart(user_id)
+            
+            with ui.column().classes('flex-1'):
+                self.create_daily_creation_completion_chart(user_id)
     
     def create_weekly_completion_chart(self, user_id: int):
         """创建本周完成趋势图"""
@@ -585,7 +593,102 @@ class StatisticsDashboardComponent:
             return status_data
         except:
             return {'completed': 0, 'pending': 0, 'in_progress': 0}
-    
+
+    def get_monthly_task_data(self, user_id: int) -> List[Dict]:
+        """获取每月任务创建和完成数据"""
+        monthly_data = []
+        today = date.today()
+        # 获取过去12个月的数据
+        for i in range(12):
+            target_month = today.replace(day=1) - timedelta(days=30 * i) # 近似一个月
+            month_start = target_month.replace(day=1)
+            next_month = (month_start.replace(day=28) + timedelta(days=4)).replace(day=1)
+            month_end = next_month - timedelta(days=1)
+
+            month_label = target_month.strftime('%Y年%m月')
+
+            try:
+                # 查询当月创建的任务数
+                created_query = """
+                SELECT COUNT(*) as count
+                FROM tasks
+                WHERE user_id = %s
+                AND DATE(created_at) >= %s
+                AND DATE(created_at) <= %s
+                """
+                created_result = self.statistics_manager.db.execute_query(
+                    created_query, (user_id, month_start, month_end)
+                )
+                created_tasks = created_result[0]['count'] if created_result else 0
+
+                # 查询当月完成的任务数
+                completed_query = """
+                SELECT COUNT(*) as count
+                FROM tasks
+                WHERE user_id = %s
+                AND status = 'completed'
+                AND DATE(updated_at) >= %s
+                AND DATE(updated_at) <= %s
+                """
+                completed_result = self.statistics_manager.db.execute_query(
+                    completed_query, (user_id, month_start, month_end)
+                )
+                completed_tasks = completed_result[0]['count'] if completed_result else 0
+
+                monthly_data.append({
+                    'month': month_label,
+                    'created_tasks': created_tasks,
+                    'completed_tasks': completed_tasks
+                })
+            except Exception as e:
+                print(f"Error getting monthly data for {month_label}: {e}")
+                monthly_data.append({
+                    'month': month_label,
+                    'created_tasks': 0,
+                    'completed_tasks': 0
+                })
+        return list(reversed(monthly_data)) # 反转列表，使月份按时间顺序排列
+
+    def create_monthly_task_chart(self, user_id: int):
+        """创建每月任务创建和完成趋势图"""
+        monthly_data = self.get_monthly_task_data(user_id)
+
+        with ui.card().classes('w-full p-4'):
+            ui.label('每月任务趋势').classes('text-h6 mb-3')
+
+            chart_data = {
+                'xAxis': {
+                    'type': 'category',
+                    'data': [item['month'] for item in monthly_data]
+                },
+                'yAxis': {
+                    'type': 'value',
+                    'name': '任务数'
+                },
+                'series': [
+                    {
+                        'name': '创建任务',
+                        'type': 'line',
+                        'data': [item['created_tasks'] for item in monthly_data],
+                        'itemStyle': {'color': '#673ab7'} # Deep Purple
+                    },
+                    {
+                        'name': '完成任务',
+                        'type': 'line',
+                        'data': [item['completed_tasks'] for item in monthly_data],
+                        'itemStyle': {'color': '#009688'} # Teal
+                    }
+                ],
+                'legend': {
+                    'data': ['创建任务', '完成任务']
+                },
+                'tooltip': {
+                    'trigger': 'axis'
+                }
+            }
+
+            ui.echart(chart_data).classes('w-full h-48')
+
     def get_weekly_data(self, user_id: int) -> List[Dict]:
         """获取本周数据"""
         weekly_data = []
@@ -607,7 +710,7 @@ class StatisticsDashboardComponent:
                 # 获取总任务数（需要单独查询）
                 total_query = """
                 SELECT COUNT(*) as total_count
-                FROM tasks 
+                FROM tasks
                 WHERE user_id = %s AND DATE(created_at) = %s
                 """
                 total_result = self.statistics_manager.db.execute_query(total_query, (user_id, day))
@@ -625,6 +728,49 @@ class StatisticsDashboardComponent:
             })
         
         return weekly_data
+
+    def create_daily_creation_completion_chart(self, user_id: int):
+        """创建每日任务创建和完成对比图"""
+        daily_data = self.get_weekly_data(user_id) # 复用 get_weekly_data
+
+        with ui.card().classes('w-full p-4'):
+            ui.label('每日任务创建与完成').classes('text-h6 mb-3')
+
+            chart_data = {
+                'xAxis': {
+                    'type': 'category',
+                    'data': [item['day'] for item in daily_data]
+                },
+                'yAxis': {
+                    'type': 'value',
+                    'name': '任务数'
+                },
+                'series': [
+                    {
+                        'name': '创建任务',
+                        'type': 'bar',
+                        'data': [item['total_tasks'] for item in daily_data],
+                        'itemStyle': {'color': '#42a5f5'} # Blue
+                    },
+                    {
+                        'name': '完成任务',
+                        'type': 'bar',
+                        'data': [item['completed_tasks'] for item in daily_data],
+                        'itemStyle': {'color': '#66bb6a'} # Green
+                    }
+                ],
+                'legend': {
+                    'data': ['创建任务', '完成任务']
+                },
+                'tooltip': {
+                    'trigger': 'axis',
+                    'axisPointer': {
+                        'type': 'shadow'
+                    }
+                }
+            }
+
+            ui.echart(chart_data).classes('w-full h-48')
 
     def create_stats_bar(self, container, current_tasks: List[Dict]):
         """创建统计栏"""
