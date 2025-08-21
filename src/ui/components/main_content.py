@@ -44,10 +44,10 @@ class MainContentComponent:
                     else:
                         # 默认视图
                         view_titles = {
-                            'my_day': '我的一天',
-                            'planned': '计划内',
+                            'my_day': '今天截止',
+                            'planned': '即将截止',
                             'important': '重要',
-                            'all': '任务'
+                            'all': '所有任务'
                         }
                         title = view_titles.get(current_view, '任务')
                     
