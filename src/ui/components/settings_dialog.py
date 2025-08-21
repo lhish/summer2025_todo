@@ -45,7 +45,6 @@ class SettingsDialogComponent:
         """创建左侧导航栏"""
         sections = [
             {'name': '番茄钟', 'icon': 'timer'},
-            {'name': '通知设置', 'icon': 'notifications'},
             {'name': '目标设置', 'icon': 'flag'},
             {'name': '账户操作', 'icon': 'settings'}
         ]
@@ -86,8 +85,6 @@ class SettingsDialogComponent:
         """渲染右侧内容区域"""
         if self.current_section == '番茄钟':
             self.render_pomodoro_settings(settings)
-        elif self.current_section == '通知设置':
-            self.render_notification_settings(settings)
         elif self.current_section == '目标设置':
             self.render_goal_settings(settings)
         elif self.current_section == '账户操作':
@@ -163,26 +160,7 @@ class SettingsDialogComponent:
         """渲染通知设置"""
         ui.label('通知设置').classes('text-h6 mt-4 mb-1 text-primary')
         ui.separator().classes('mb-4')
-
-        with ui.column().classes('gap-4').style('max-width: 400px;'):
-            notification_sound = ui.select(
-                label='通知声音',
-                options={
-                    'default': '默认',
-                    'bell': '铃声',
-                    'chime': '钟声',
-                    'none': '静音'
-                },
-                value=settings.get('notification_sound', 'default')
-            ).classes('w-full')
-
-            ui.button(
-                '保存通知设置',
-                icon='save',
-                on_click=lambda: self.save_notification_settings({
-                    'notification_sound': notification_sound.value
-                })
-            ).props('color=primary').classes('mt-4')
+        ui.label('通知音切换功能已移除。').classes('text-body1')
 
     def render_goal_settings(self, settings: Dict):
         """渲染目标设置"""
@@ -267,19 +245,10 @@ class SettingsDialogComponent:
             ui.notify('保存失败', type='negative', icon='error')
 
     def save_notification_settings(self, settings_data: Dict):
-        """保存通知设置"""
-        success = self.settings_manager.update_user_settings(
-            self.current_user['user_id'],
-            settings_data
-        )
-
-        if success:
-            ui.notify('通知设置已保存', type='positive', icon='check')
-            app.storage.user['settings_updated'] = True
-            # 强制刷新浏览器以确保通知设置生效
-            ui.run_javascript('window.location.reload()')
-        else:
-            ui.notify('保存失败', type='negative', icon='error')
+        """保存通知设置 (通知音切换功能已移除)"""
+        ui.notify('通知音切换功能已移除，无需保存', type='info', icon='info')
+        # 强制刷新浏览器以确保更改生效
+        ui.run_javascript('window.location.reload()')
 
     def save_goal_settings(self, settings_data: Dict):
         """保存目标设置"""
