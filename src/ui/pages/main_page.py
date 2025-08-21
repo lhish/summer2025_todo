@@ -103,7 +103,7 @@ class MainPage:
             self.task_detail_container = ui.column().classes('task-detail-container task-detail-hidden')
             
         # 底部番茄钟和声音控制（固定在主内容区域底部）
-        self.timer_container = ui.row().classes('timer-mini-container')
+        self.timer_container = ui.row().style('position: fixed; bottom: 20px; right: 20px; background: white; border-radius: 25px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); padding: 8px 16px; z-index: 1000;')
         with self.timer_container:
             # 番茄钟计时器
             self.pomodoro_component.create_mini_timer(ui.element())

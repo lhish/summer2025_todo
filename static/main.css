@@ -129,8 +129,7 @@ body {
 .timer-mini-container {
     position: fixed;
     bottom: 20px;
-    left: 50%;
-    transform: translateX(-50%);
+    left: 20px;
     background: white;
     border-radius: 25px;
     box-shadow: 0 4px 12px rgba(0,0,0,0.1);
