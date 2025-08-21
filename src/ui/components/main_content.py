@@ -89,7 +89,7 @@ class MainContentComponent:
                 
                 # 右侧：AI面板
                 with ui.card().classes('flex-1 p-4'):
-                    ui.label('AI助手').classes('text-h6 mb-4')
+                    ui.label('效能分析').classes('text-h6 mb-4')
                     if self.ai_assistant and self.task_manager and self.statistics_manager and self.current_user:
                         ai_panel = AIPanelComponent(
                             self.ai_assistant, 
@@ -105,32 +105,16 @@ class MainContentComponent:
     def create_ai_chat_interface(self, ai_panel):
         """创建AI功能界面"""
         # 模式选择器
-        mode_options = {
-            'task_recommendation': '智能任务推荐',
-            'workload_estimation': '工作量预估',
-            'efficiency_report': '效能分析'
-        }
-        
-        # 选择模式
+        # 效能分析按钮
         with ui.column().classes('w-full gap-4'):
-            ui.label('选择AI分析功能:').classes('text-sm font-medium')
-            
-            mode_select = ui.select(
-                options=mode_options,
-                value='task_recommendation'
-            ).classes('w-full')
-            
-            # 执行按钮
             self.execute_button = ui.button(
-                '执行分析',
-                icon='psychology',
-                on_click=lambda: self.execute_ai_analysis(ai_panel, mode_select.value)
+                '分析',
+                on_click=lambda: self.execute_ai_analysis(ai_panel, 'efficiency_report')
             ).classes('bg-primary')
             
             # 结果显示区域
             self.ai_result_container = ui.column().classes('w-full mt-4 p-4 bg-grey-1 rounded')
-            with self.ai_result_container:
-                ui.label('请选择功能并点击"执行分析"按钮').classes('text-grey-6')
+            # 初始状态为空，等待分析结果
 
     async def execute_ai_analysis(self, ai_panel, mode: str):
         """执行AI分析"""
@@ -149,12 +133,8 @@ class MainContentComponent:
             
             # 根据模式执行相应的分析
             try:
-                if mode == 'task_recommendation':
-                    await self.show_task_recommendations(ai_panel)
-                elif mode == 'workload_estimation':
-                    await self.show_workload_estimation(ai_panel)
-                elif mode == 'efficiency_report':
-                    await self.show_efficiency_report(ai_panel)
+                # 只执行效能分析
+                await self.show_efficiency_report(ai_panel)
             except Exception as e:
                 self.ai_result_container.clear()
                 with self.ai_result_container:
@@ -275,7 +255,7 @@ class MainContentComponent:
 专注时长数据：
 {user_data['focus_data']}
 
-请生成效能分析报告。"""
+请生成效能分析报告。不要使用md。"""
         
         # 调用AI
         response = await ai_panel.ai_assistant.call_llm_api(prompt, system_prompt)
