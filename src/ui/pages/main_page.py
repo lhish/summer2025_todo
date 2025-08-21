@@ -108,11 +108,6 @@ class MainPage:
             # 番茄钟计时器
             self.pomodoro_component.create_mini_timer(ui.element())
             # 添加全局声音控制按钮
-            self.pomodoro_component.create_sound_control(
-                container=ui.element(),
-                props='flat round size=sm',
-                classes='ml-0'
-            )
         
         # 添加CSS样式
         self.add_css_styles()

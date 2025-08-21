@@ -37,7 +37,7 @@ class PomodoroTimerComponent:
         from src.utils.global_config import AVAILABLE_THEMES, get_current_theme
         self.themes = AVAILABLE_THEMES
         self.current_theme = get_current_theme()
-        self.is_sound_on = False
+        # 移除 is_sound_on 属性，因为背景音乐将始终播放
 
         # 创建通知容器
         self.notification_container = ui.element('div').style('display: none')
@@ -51,11 +51,16 @@ class PomodoroTimerComponent:
 
         # 初始化全局音频控制
         self.audio = None
-        self.sound_btn = None
         
         # 在初始化时创建提示音对象，并将其放置在通知容器中
         with self.notification_container:
             self.ding_audio = ui.audio('/static/sound/ding.mp3').classes('hidden')
+            
+        # 创建白噪音播放器（不在通知容器中）
+        current_theme_data = next((t for t in self.themes if t['name'] == self.current_theme), self.themes[0])
+        self.audio = ui.audio(f"/static/sound/{current_theme_data['sound']}").classes('hidden')
+        # 设置循环播放
+        self.audio.on('ended', lambda: self.audio.play())
 
     def load_settings(self):
         """从全局设置中加载番茄钟参数"""
@@ -302,35 +307,24 @@ class PomodoroTimerComponent:
             ''')
         
         # 处理音频播放 - 实现重置白噪音功能
-        if self.is_sound_on:
-            try:
-                # 暂停当前音频
-                if self.audio:
-                    self.audio.pause()
-                    print(f"已暂停当前音频: {self.audio.src}")
-                
-                # 确保音频对象存在
-                if not self.audio:
-                    self.audio = ui.audio(f"/static/sound/{theme['sound']}").classes('hidden')
-                    # 设置循环播放
-                    self.audio.on('ended', lambda: self.audio.play())
-                else:
-                    # 更新音频源
-                    self.audio.src = f"/static/sound/{theme['sound']}"
-                
-                # 通知用户需要手动点击播放按钮
-                ui.notify('主题已切换，请点击播放按钮重新开始白噪音', type='info')
-                
-                # 暂时关闭音频状态，等待用户手动点击播放
-                self.is_sound_on = False
-                if self.sound_btn:
-                    self.sound_btn.props('icon=volume_off')
-                
-                print(f"主题切换完成，音频源已更新为: {self.audio.src}")
-                
-            except Exception as e:
-                print(f"主题切换时处理音频失败: {e}")
-                ui.notify('音频处理失败，请刷新页面重试', type='warning')
+        try:
+            # 暂停当前音频
+            if self.audio:
+                self.audio.pause()
+                print(f"已暂停当前音频: {self.audio.src}")
+            
+            # 更新音频源
+            self.audio.src = f"/static/sound/{theme['sound']}"
+            
+            # 如果音频之前在播放，则继续播放新主题音频
+            if self.timer_running:
+                asyncio.create_task(self._play_theme_audio(theme['sound']))
+            
+            print(f"主题切换完成，音频源已更新为: {self.audio.src}")
+            
+        except Exception as e:
+            print(f"主题切换时处理音频失败: {e}")
+            ui.notify('音频处理失败，请刷新页面重试', type='warning')
 
     async def _play_theme_audio(self, sound_file):
         """延迟播放主题音频"""
@@ -419,6 +413,9 @@ class PomodoroTimerComponent:
         if self.status_label:
             self.status_label.text = '休息中' if self.in_break else '专注中'
 
+        # 启动白噪音播放
+        self.start_background_sound()
+        
         # 发送通知
         ui.notify('计时开始！', type='positive')
         # 播放开始音频
@@ -442,6 +439,9 @@ class PomodoroTimerComponent:
             if self.status_label:
                 self.status_label.text = '暂停'
 
+            # 停止白噪音播放
+            self.stop_background_sound()
+            
             ui.notify('计时已暂停', type='info')
         else:
             print("DEBUG: pause_timer - 计时器未运行或无活跃会话，无法暂停")
@@ -466,9 +466,8 @@ class PomodoroTimerComponent:
         if self.status_label:
             self.status_label.text = '暂停'
 
-        # 停止白噪音播放并切换声音控制按钮
-        if self.is_sound_on:
-            self.toggle_sound()
+        # 停止白噪音播放
+        self.stop_background_sound()
 
         ui.notify('计时器已重置', type='info')
         print("DEBUG: reset_timer - 计时器已重置")
@@ -826,70 +825,29 @@ class PomodoroTimerComponent:
             self.ding_audio.play()
         except Exception as e:
             print(f"播放提示音失败: {e}")
-
-    def toggle_sound(self):
-        """切换白噪音开关"""
-        self.is_sound_on = not self.is_sound_on
-        
-        if self.is_sound_on:
-            print("DEBUG: toggle_sound - 开启白噪音")
-            if self.sound_btn:
-                self.sound_btn.props('icon=volume_up')
             
-            # 获取当前主题
-            current_theme = next((t for t in self.themes if t['name'] == self.current_theme), self.themes[0])
-            
-            # 确保audio对象存在
-            if not self.audio:
-                self.audio = ui.audio(f"/static/sound/{current_theme['sound']}").classes('hidden')
-                # 设置循环播放
-                self.audio.on('ended', lambda: self.audio.play())
-            else:
-                # 更新音频源
-                self.audio.src = f"/static/sound/{current_theme['sound']}"
-            
-            # 尝试播放音频
+    def start_background_sound(self):
+        """开始播放背景白噪音"""
+        if self.audio:
             try:
+                # 检查当前主题
+                current_theme_data = next((t for t in self.themes if t['name'] == self.current_theme), self.themes[0])
+                # 更新音频源确保是当前主题
+                self.audio.src = f"/static/sound/{current_theme_data['sound']}"
                 self.audio.play()
-                print(f"DEBUG: toggle_sound - 正在播放音频: {self.audio.src}")
-                ui.notify('白噪音已开启', type='positive')
+                print(f"DEBUG: start_background_sound - 开始播放背景音频: {self.audio.src}")
             except Exception as e:
-                print(f"DEBUG: toggle_sound - 播放音频失败: {e}")
-                # ui.notify('音频播放失败，请稍后重试', type='warning')
-                
+                print(f"DEBUG: start_background_sound - 播放背景音频失败: {e}")
         else:
-            print("DEBUG: toggle_sound - 关闭白噪音")
-            if self.sound_btn:
-                self.sound_btn.props('icon=volume_off')
-            if self.audio:
-                try:
-                    self.audio.pause()
-                    print("DEBUG: toggle_sound - 白噪音已暂停")
-                except Exception as e:
-                    print(f"DEBUG: toggle_sound - 暂停音频失败: {e}")
+            print("DEBUG: start_background_sound - 音频未启用或audio对象不存在")
             
-            ui.notify('白噪音已关闭', type='info')
-        
-        print(f"DEBUG: toggle_sound - 白噪音状态: {'开启' if self.is_sound_on else '关闭'}")
-
-    def create_sound_control(self, container=None, **kwargs):
-        """创建全局声音控制按钮
-        
-        Args:
-            container: 容器对象，如果为None则使用默认容器
-            **kwargs: 额外的props和classes参数
-        """
-        if container is None:
-            container = ui
-            
-        # 合并props和classes
-        props = kwargs.get('props', 'flat round')
-        classes = kwargs.get('classes', 'text-white')
-        
-        with container:
-            self.sound_btn = ui.button(
-                icon='volume_up' if self.is_sound_on else 'volume_off',
-                on_click=self.toggle_sound
-            ).props(props).classes(classes)
-        
-        return self.sound_btn
+    def stop_background_sound(self):
+        """停止播放背景白噪音"""
+        if self.audio:
+            try:
+                self.audio.pause()
+                print("DEBUG: stop_background_sound - 背景音频已暂停")
+            except Exception as e:
+                print(f"DEBUG: stop_background_sound - 暂停背景音频失败: {e}")
+        else:
+            print("DEBUG: stop_background_sound - audio对象不存在")
