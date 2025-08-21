@@ -107,15 +107,6 @@ class SidebarComponent:
                                 ui.label(display_email).classes('text-sm font-medium').style('white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;')
                                 ui.label('已登录').classes('text-xs text-grey-6')
                         ui.separator()
-                    else:
-                        # 折叠时显示用户头像或首字母
-                        with ui.column().classes('w-full items-center p-2'):
-                            ui.separator()
-                            # 显示用户邮箱首字母的圆形头像
-                            initial = self.current_user['email'][0].upper() if self.current_user['email'] else 'U'
-                            with ui.element('div').classes('w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center user-avatar'):
-                                ui.label(initial).classes('text-white text-sm font-bold')
-                            ui.separator()
                     
                     # 操作按钮 - 始终显示，根据展开/收起状态调整布局
                     with ui.column().classes('w-full p-3 bottom-actions').style('padding-bottom: 12px;'):
