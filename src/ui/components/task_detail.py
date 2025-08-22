@@ -192,31 +192,6 @@ class TaskDetailComponent:
                             # 添加清除截止日期按钮
                             ui.button(icon='clear', on_click=self.clear_due_date).props('flat round dense color=grey size=sm').tooltip('清除截止日期')
                         
-                        # 重复周期（可编辑）
-                        with ui.row().classes('w-full items-center gap-2 sm:gap-3'):
-                            ui.icon('repeat').classes('text-grey-6 flex-shrink-0')
-                            
-                            # 重复周期选择框
-                            repeat_options = {
-                                'none': '不重复',
-                                'daily': '每天',
-                                'weekly': '每周',
-                                'monthly': '每月'
-                            }
-                            
-                            current_repeat = self.selected_task.get('repeat_cycle', 'none')
-                            self.repeat_select = ui.select(
-                                options=repeat_options,
-                                value=current_repeat,
-                                label='重复周期'
-                            ).classes('flex-1 min-w-0').props('borderless')
-                            # 添加值改变时自动保存
-                            def on_repeat_change():
-                                if self.repeat_select:
-                                    current_value = self.repeat_select.value
-                                    self.auto_save_field('repeat_cycle', new_value=current_value)
-                            self.repeat_select.on('update:model-value', on_repeat_change)
-                        
                         # 优先级（可编辑）
                         with ui.row().classes('w-full items-center gap-2 sm:gap-3'):
                             ui.icon('flag').classes('text-grey-6 flex-shrink-0')
@@ -361,56 +336,6 @@ class TaskDetailComponent:
         except Exception as e:
             ui.notify(f'清除截止日期失败：{str(e)}', type='negative')
 
-
-
-    # def reset_form(self):
-    #     """重置表单到初始状态"""
-    #     if not self.initial_task_state:
-    #         ui.notify('无法重置：没有初始状态数据', type='warning')
-    #         return
-    #     try:
-    #         # 重置各个字段到初始状态
-    #         if self.title_input:
-    #             self.title_input.value = self.initial_task_state['title']
-    #         if self.description_input:
-    #             self.description_input.value = self.initial_task_state['description']
-    #         if self.due_date_input:
-    #             due_date_value = self.initial_task_state['due_date']
-    #             if due_date_value and isinstance(due_date_value, str):
-    #                 due_date_value = due_date_value.split()[0]
-    #             self.due_date_input.value = due_date_value or ''
-    #         if self.estimated_pomodoros_input:
-    #             self.estimated_pomodoros_input.value = self.initial_task_state['estimated_pomodoros']
-    #         if self.repeat_select:
-    #             self.repeat_select.value = self.initial_task_state['repeat_cycle']
-    #         if self.priority_select:
-    #             self.priority_select.value = self.initial_task_state['priority']
-    #         # 重置标签到初始状态
-    #         initial_tag_names = [tag['name'] for tag in self.initial_task_state['tags']]
-    #         # 更新任务标签到初始状态
-    #         success = self.task_manager.update_task(
-    #             task_id=self.selected_task['task_id'],
-    #             title=self.initial_task_state['title'],
-    #             description=self.initial_task_state['description'],
-    #             due_date=self.initial_task_state['due_date'],
-    #             priority=self.initial_task_state['priority'],
-    #             estimated_pomodoros=self.initial_task_state['estimated_pomodoros'],
-    #             repeat_cycle=self.initial_task_state['repeat_cycle'],
-    #             tags=initial_tag_names
-    #         )
-    #         if success:
-    #             # 重新获取任务数据以更新标签显示
-    #             updated_task = self.task_manager.get_task_by_id(self.selected_task['task_id'])
-    #             if updated_task:
-    #                 self.selected_task = updated_task
-    #                 self.refresh_tags_display()
-    #             ui.notify('已重置到初始状态', type='positive')
-    #             # 触发界面更新
-    #             self.on_task_update()
-    #         else:
-    #             ui.notify('重置失败', type='negative')
-    #     except Exception as e:
-    #         ui.notify(f'重置失败: {str(e)}', type='negative')
 
     def show_task_detail(self, task: Dict, container):
         """显示任务详情"""
